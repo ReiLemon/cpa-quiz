@@ -194,21 +194,52 @@ import{getFirestore,doc,setDoc,getDoc}from'https://www.gstatic.com/firebasejs/11
 const _fc={apiKey:"AIzaSyByImWNSABE69MCpTHbqYZzz6LZRKwplD4",authDomain:"cpa-quiz-6d1f9.firebaseapp.com",projectId:"cpa-quiz-6d1f9",storageBucket:"cpa-quiz-6d1f9.firebasestorage.app",messagingSenderId:"534803312241",appId:"1:534803312241:web:00dde6df4cbbedf1da35d0"};
 function _getSyncId(){let id=localStorage.getItem('cpa_sync_id');if(!id){id='u'+Math.random().toString(36).substr(2,9)+Date.now().toString(36);localStorage.setItem('cpa_sync_id',id);}return id;}
 const _app=initializeApp(_fc);const _fs=getFirestore(_app);
-window.fbSave=async function(key,obj){try{const id=_getSyncId();await setDoc(doc(_fs,'users',id,'d',key),{p:JSON.stringify(obj),t:Date.now()});}catch(e){console.warn('[FB save]',e);}};
+window.fbSave=async function(key,obj){try{const id=_getSyncId();await setDoc(doc(_fs,'users',id,'d',key),{p:JSON.stringify(obj),t:Date.now()})}catch(e){console.warn('[FB save]',e);}};
 window.fbLoad=async function(key,cb){try{const id=_getSyncId();const s=await getDoc(doc(_fs,'users',id,'d',key));if(s.exists())cb(JSON.parse(s.data().p),s.data().t||0);}catch(e){console.warn('[FB load]',e);}};
 window.getCpaSyncId=_getSyncId;
 document.addEventListener('DOMContentLoaded',()=>{
+  // ── 同期ボタン（右上・小さく）──
   const wrap=document.createElement('div');
-  wrap.style.cssText='position:fixed;bottom:12px;right:12px;z-index:9999;display:flex;flex-direction:column;align-items:flex-end;gap:5px';
+  wrap.style.cssText='position:fixed;top:8px;right:8px;z-index:9999;display:flex;flex-direction:column;align-items:flex-end;gap:4px';
   const b1=document.createElement('button');
-  b1.textContent='☁ Sync IDをコピー';
-  b1.style.cssText='background:#1a73e8;color:#fff;font-size:11px;padding:5px 10px;border-radius:14px;border:none;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)';
+  b1.textContent='☁';
+  b1.title='Sync IDをコピー';
+  b1.style.cssText='background:rgba(26,115,232,0.80);color:#fff;font-size:16px;width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;line-height:1;padding:0';
   const b2=document.createElement('button');
-  b2.textContent='🔗 別端末と同期';
-  b2.style.cssText='background:#555;color:#fff;font-size:11px;padding:5px 10px;border-radius:14px;border:none;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)';
+  b2.textContent='🔗';
+  b2.title='別端末と同期';
+  b2.style.cssText='background:rgba(80,80,80,0.75);color:#fff;font-size:16px;width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;line-height:1;padding:0;display:none';
   wrap.appendChild(b1);wrap.appendChild(b2);document.body.appendChild(wrap);
-  b1.onclick=()=>{const id=_getSyncId();navigator.clipboard.writeText(id).catch(()=>prompt('Sync ID（コピーして別端末で使用）:',id));b1.textContent='✓ コピー済み';setTimeout(()=>{b1.textContent='☁ Sync IDをコピー';},2000);};
-  b2.onclick=()=>{const v=prompt('他の端末のSync IDを入力してください（現在のデータが上書きされます）:');if(v&&v.trim().length>5){localStorage.setItem('cpa_sync_id',v.trim());location.reload();}};
+  b1.onclick=()=>{
+    if(b2.style.display==='none'){b2.style.display='block';return;}
+    const id=_getSyncId();
+    navigator.clipboard.writeText(id).catch(()=>prompt('Sync ID（コピーして別端末で使用）:',id));
+    b1.textContent='✓';setTimeout(()=>{b1.textContent='☁';},2000);
+    b2.style.display='none';
+  };
+  b2.onclick=()=>{const v=prompt('他の端末のSync IDを入力（現在のデータが上書きされます）:');if(v&&v.trim().length>5){localStorage.setItem('cpa_sync_id',v.trim());location.reload();}};
+  document.addEventListener('click',(e)=>{if(!wrap.contains(e.target))b2.style.display='none';});
+
+  // ── Firebase同期チェック（自動リロードなし・バナー通知）──
+  if(sessionStorage.getItem('_fbrl_kigyou_v6')){sessionStorage.removeItem('_fbrl_kigyou_v6');return;}
+  const _lt=parseInt(localStorage.getItem('_ts_kigyou_v6')||'0');
+  const _w=(cb)=>{if(typeof window.fbLoad==='function')cb();else setTimeout(()=>_w(cb),300);};
+  _w(()=>{
+    window.fbLoad('kigyou_v6',(d,ft)=>{
+      if(ft>_lt){
+        const bar=document.createElement('div');
+        bar.style.cssText='position:fixed;top:0;left:0;right:0;background:#1a73e8;color:#fff;text-align:center;padding:10px 16px;font-size:13px;z-index:10000;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.3)';
+        bar.textContent='☁ 他の端末の新しいデータがあります　→ タップして同期';
+        bar.onclick=()=>{
+          localStorage.setItem('kigyou_v6',JSON.stringify(d));
+          localStorage.setItem('_ts_kigyou_v6',ft+'');
+          sessionStorage.setItem('_fbrl_kigyou_v6','1');
+          location.reload();
+        };
+        document.body.prepend(bar);
+      }
+    });
+  });
 });
 </script>
 </head>
