@@ -527,6 +527,12 @@ function saveStorage(){
 }
 loadStorage();
 updateCountBadge();
+document.addEventListener('DOMContentLoaded',function(){
+  if(sessionStorage.getItem('_fbrl_kansa_v6')){sessionStorage.removeItem('_fbrl_kansa_v6');return;}
+  var _lt=parseInt(localStorage.getItem('_ts_kansa_v6')||'0');
+  var _w=function(cb){if(typeof window.fbLoad==='function'){cb();}else{setTimeout(function(){_w(cb);},300);}};
+  _w(function(){window.fbLoad('kansa_v6',function(d,ft){if(ft>_lt){var bar=document.createElement('div');bar.style.cssText='position:fixed;top:0;left:0;right:0;background:#1a73e8;color:#fff;text-align:center;padding:10px 16px;font-size:13px;z-index:10000;cursor:pointer';bar.textContent='☁ 他の端末の新しいデータがあります　→ タップして同期';bar.onclick=function(){localStorage.setItem('kansa_v6',JSON.stringify(d));localStorage.setItem('_ts_kansa_v6',ft+'');sessionStorage.setItem('_fbrl_kansa_v6','1');location.reload();};document.body.prepend(bar);}});});
+});
 // ── Firebase クラウド同期 ──
 document.addEventListener('DOMContentLoaded',function(){
   if(sessionStorage.getItem('_fbrl_kansa_v6')){sessionStorage.removeItem('_fbrl_kansa_v6');return;}
