@@ -188,6 +188,29 @@ body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN',sans-serif;b
 }
 </style>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzFlNTc5OSIvPjx0ZXh0IHg9IjE2IiB5PSIyNCIgZm9udC1zaXplPSIyMiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+55ujPC90ZXh0Pjwvc3ZnPg==">
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js';
+import{getFirestore,doc,setDoc,getDoc}from'https://www.gstatic.com/firebasejs/11.3.0/firebase-firestore.js';
+const _fc={apiKey:"AIzaSyByImWNSABE69MCpTHbqYZzz6LZRKwplD4",authDomain:"cpa-quiz-6d1f9.firebaseapp.com",projectId:"cpa-quiz-6d1f9",storageBucket:"cpa-quiz-6d1f9.firebasestorage.app",messagingSenderId:"534803312241",appId:"1:534803312241:web:00dde6df4cbbedf1da35d0"};
+function _getSyncId(){let id=localStorage.getItem('cpa_sync_id');if(!id){id='u'+Math.random().toString(36).substr(2,9)+Date.now().toString(36);localStorage.setItem('cpa_sync_id',id);}return id;}
+const _app=initializeApp(_fc);const _fs=getFirestore(_app);
+window.fbSave=async function(key,obj){try{const id=_getSyncId();await setDoc(doc(_fs,'users',id,'d',key),{p:JSON.stringify(obj),t:Date.now()});}catch(e){console.warn('[FB save]',e);}};
+window.fbLoad=async function(key,cb){try{const id=_getSyncId();const s=await getDoc(doc(_fs,'users',id,'d',key));if(s.exists())cb(JSON.parse(s.data().p),s.data().t||0);}catch(e){console.warn('[FB load]',e);}};
+window.getCpaSyncId=_getSyncId;
+document.addEventListener('DOMContentLoaded',()=>{
+  const wrap=document.createElement('div');
+  wrap.style.cssText='position:fixed;bottom:12px;right:12px;z-index:9999;display:flex;flex-direction:column;align-items:flex-end;gap:5px';
+  const b1=document.createElement('button');
+  b1.textContent='☁ Sync IDをコピー';
+  b1.style.cssText='background:#1a73e8;color:#fff;font-size:11px;padding:5px 10px;border-radius:14px;border:none;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)';
+  const b2=document.createElement('button');
+  b2.textContent='🔗 別端末と同期';
+  b2.style.cssText='background:#555;color:#fff;font-size:11px;padding:5px 10px;border-radius:14px;border:none;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)';
+  wrap.appendChild(b1);wrap.appendChild(b2);document.body.appendChild(wrap);
+  b1.onclick=()=>{const id=_getSyncId();navigator.clipboard.writeText(id).catch(()=>prompt('Sync ID（コピーして別端末で使用）:',id));b1.textContent='✓ コピー済み';setTimeout(()=>{b1.textContent='☁ Sync IDをコピー';},2000);};
+  b2.onclick=()=>{const v=prompt('他の端末のSync IDを入力してください（現在のデータが上書きされます）:');if(v&&v.trim().length>5){localStorage.setItem('cpa_sync_id',v.trim());location.reload();}};
+});
+</script>
 </head>
 <body>
 
@@ -465,15 +488,30 @@ function loadStorage(){
 }
 function saveStorage(){
   try{
-    localStorage.setItem('kansa_v6',JSON.stringify({
-      db:db, wrongDB:wrongDB, unknownDB:unknownDB,
-      slowDB:slowDB, bookmarks:bookmarks, sessHistory:sessHistory,
-      srsDB:srsDB, memoMap:memoMap, slow20DB:slow20DB
-    }));
+    const _sd={db:db,wrongDB:wrongDB,unknownDB:unknownDB,slowDB:slowDB,bookmarks:bookmarks,sessHistory:sessHistory,srsDB:srsDB,memoMap:memoMap,slow20DB:slow20DB};
+    localStorage.setItem('kansa_v6',JSON.stringify(_sd));
+    localStorage.setItem('_ts_kansa_v6',Date.now()+'');
+    if(typeof window.fbSave==='function') window.fbSave('kansa_v6',_sd);
   }catch(e){}
 }
 loadStorage();
 updateCountBadge();
+// ── Firebase クラウド同期 ──
+document.addEventListener('DOMContentLoaded',function(){
+  if(sessionStorage.getItem('_fbrl_kansa_v6')){sessionStorage.removeItem('_fbrl_kansa_v6');return;}
+  var _lt=parseInt(localStorage.getItem('_ts_kansa_v6')||'0');
+  var _w=function(cb){if(typeof window.fbLoad==='function'){cb();}else{setTimeout(function(){_w(cb);},300);}};
+  _w(function(){
+    window.fbLoad('kansa_v6',function(d,ft){
+      if(ft>_lt){
+        localStorage.setItem('kansa_v6',JSON.stringify(d));
+        localStorage.setItem('_ts_kansa_v6',ft+'');
+        sessionStorage.setItem('_fbrl_kansa_v6','1');
+        location.reload();
+      }
+    });
+  });
+});
 
 // ===== FILTERS =====
 function toggleLevel(lv){
