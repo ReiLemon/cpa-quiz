@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>データ移行ツール（ローカル → クラウド）</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+  background: #f0f2f5; color: #333; min-height: 100vh; padding: 20px; }
+.wrap { max-width: 600px; margin: 0 auto; }
+h1 { font-size: 20px; font-weight: 700; margin-bottom: 6px; color: #1a73e8; }
+.sub { font-size: 13px; color: #666; margin-bottom: 24px; }
+.card { background: #fff; border-radius: 12px; padding: 18px 20px;
+  margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,.07); }
+.card h2 { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: #444; }
+.row { display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+.row:last-child { border-bottom: none; }
+.tag-ok { background: #e8f5e9; color: #2e7d32; padding: 2px 8px;
+  border-radius: 10px; font-size: 11px; font-weight: 700; }
+.tag-empty { background: #eee; color: #999; padding: 2px 8px;
+  border-radius: 10px; font-size: 11px; }
+.btn { background: #1a73e8; color: #fff; border: none; padding: 12px 24px;
+  border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer;
+  width: 100%; margin-top: 8px; }
+.btn:hover { background: #1557b0; }
+.btn:disabled { background: #aaa; cursor: not-allowed; }
+.btn-copy { background: #555; font-size: 13px; padding: 8px 16px;
+  border-radius: 6px; border: none; color: #fff; cursor: pointer; margin-left: 8px; }
+.sync-id-box { display: flex; align-items: center; background: #f8f9fa;
+  border: 1px solid #ddd; border-radius: 8px; padding: 10px 14px;
+  font-family: monospace; font-size: 14px; word-break: break-all; }
+#status { font-size: 13px; margin-top: 10px; color: #555; min-height: 20px; }
+.success { color: #2e7d32; font-weight: 700; }
+.error { color: #c62828; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>☁ データ移行ツール</h1>
+  <p class="sub">ローカルのPC学習データをクラウドにアップロードします（1回だけ実行すればOK）</p>
+
+  <div class="card">
+    <h2>ステップ1 — 検出されたデータ</h2>
+    <div id="data-list">確認中...</div>
+  </div>
+
+  <div class="card">
+    <h2>ステップ2 — クラウドへアップロード</h2>
+    <button class="btn" id="upload-btn" disabled>クラウドへアップロード</button>
+    <div id="status"></div>
+  </div>
+
+  <div class="card" id="sync-card" style="display:none">
+    <h2>ステップ3 — Sync IDをスマホに入力</h2>
+    <p style="font-size:13px;margin-bottom:10px;">このIDをスマホのクイズアプリで入力してください</p>
+    <div class="sync-id-box">
+      <span id="sync-id-text" style="flex:1"></span>
+      <button class="btn-copy" id="copy-btn">コピー</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js';
+import{getFirestore,doc,setDoc}from'https://www.gstatic.com/firebasejs/11.3.0/firebase-firestore.js';
+
+const FC = {
+  apiKey:"AIzaSyByImWNSABE69MCpTHbqYZzz6LZRKwplD4",
+  authDomain:"cpa-quiz-6d1f9.firebaseapp.com",
+  projectId:"cpa-quiz-6d1f9",
+  storageBucket:"cpa-quiz-6d1f9.firebasestorage.app",
+  messagingSenderId:"534803312241",
+  appId:"1:534803312241:web:00dde6df4cbbedf1da35d0"
+};
+
+const KEYS = [
+  { key: 'kanri_v6',          label: '管理会計論クイズ' },
+  { key: 'zaimu_riron_v6',    label: '財務会計論（理論）クイズ' },
+  { key: 'kigyou_v6',         label: '企業法クイズ' },
+  { key: 'kansa_v6',          label: '監査論クイズ' },
+  { key: 'cpa_mgmt_calc_sr_v1',    label: '管理会計 短答対策' },
+  { key: 'cpa_finance_calc_sr_v6', label: '財務計算 短答対策' },
+];
+
+function getSyncId() {
+  let id = localStorage.getItem('cpa_sync_id');
+  if (!id) { id = 'u' + Math.random().toString(36).substr(2,9) + Date.now().toString(36); localStorage.setItem('cpa_sync_id', id); }
+  return id;
+}
+
+const found = [];
+let html = '';
+for (const {key, label} of KEYS) {
+  const val = localStorage.getItem(key);
+  const hasData = val && val.length > 10;
+  if (hasData) found.push({key, label, val});
+  html += `<div class="row"><span>${label}</span>${hasData ? `<span class="tag-ok">✓ データあり (${Math.round(val.length/1024)}KB)</span>` : `<span class="tag-empty">データなし</span>`}</div>`;
+}
+document.getElementById('data-list').innerHTML = html || '<p style="color:#999;font-size:13px;">データが見つかりませんでした</p>';
+
+const btn = document.getElementById('upload-btn');
+if (found.length > 0) { btn.disabled = false; btn.textContent = `クラウドへアップロード（${found.length}件）`; }
+
+const app = initializeApp(FC);
+const fs = getFirestore(app);
+
+btn.addEventListener('click', async () => {
+  btn.disabled = true;
+  const statusEl = document.getElementById('status');
+  statusEl.textContent = 'アップロード中...';
+  const syncId = getSyncId();
+  let ok = 0;
+  for (const {key, label, val} of found) {
+    try {
+      statusEl.textContent = `${label} をアップロード中...`;
+      await setDoc(doc(fs, 'users', syncId, 'd', key), {p: val, t: Date.now()});
+      localStorage.setItem('_ts_' + key, Date.now() + '');
+      ok++;
+    } catch(e) { statusEl.innerHTML += `<br><span class="error">✗ ${label}: ${e.message}</span>`; }
+  }
+  if (ok === found.length) { statusEl.innerHTML = `<span class="success">✓ ${ok}件アップロード完了！</span>`; }
+  else { statusEl.innerHTML += `<br>${ok}/${found.length} 件成功`; }
+  document.getElementById('sync-card').style.display = 'block';
+  document.getElementById('sync-id-text').textContent = syncId;
+  document.getElementById('copy-btn').addEventListener('click', () => {
+    navigator.clipboard.writeText(syncId).catch(() => prompt('Sync ID:', syncId));
+    document.getElementById('copy-btn').textContent = '✓ コピー済み';
+    setTimeout(() => { document.getElementById('copy-btn').textContent = 'コピー'; }, 2000);
+  });
+});
+</script>
+</body>
+</html>
