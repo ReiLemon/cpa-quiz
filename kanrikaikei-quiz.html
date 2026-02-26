@@ -1549,36 +1549,6 @@ function showTab(name){
 function gi(id){return document.getElementById(id);}
 function show(id){var el=gi(id);if(el)el.style.display='block';}
 function hide(id){var el=gi(id);if(el)el.style.display='none';}
-// ── キーボードショートカット ──────────────────────────
-// A → ○  |  D → ×  |  Space/Enter → 次の問題
-document.addEventListener('keydown', function(e){
-  // テキスト入力中は無視
-  var tag = document.activeElement ? document.activeElement.tagName : '';
-  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
-
-  var key = e.key;
-
-  // A → ○（answerQ(1)）
-  if(key==='a'||key==='A'){
-    var btnO=gi('btn-O');
-    if(btnO&&!btnO.disabled){ e.preventDefault(); answerQ(1); }
-    return;
-  }
-  // D → ×（answerQ(0)）
-  if(key==='d'||key==='D'){
-    var btnX=gi('btn-X');
-    if(btnX&&!btnX.disabled){ e.preventDefault(); answerQ(0); }
-    return;
-  }
-  // Enter / Space → 次の問題
-  if(key==='Enter'||key===' '){
-    var nextBtn=gi('next-btn');
-    if(nextBtn&&nextBtn.classList.contains('show')){
-      e.preventDefault(); nextQ();
-    }
-    return;
-  }
-});
 
 // ===== HIGHLIGHT MARKER SYSTEM =====
 (function(){
