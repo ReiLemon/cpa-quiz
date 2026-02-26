@@ -716,9 +716,8 @@ function answerQ(choice){
     var remaining=3-entry.streak;
     if(entry.streak>=3){
       entry.level=5; // mastered
-      delete wrongDB[q.id];
-      delete unknownDB[q.id];
-      srsEl.textContent='✨ 3連続正解！この問題をマスター！苦手リストから卒業しました';
+      // wrongDB/unknownDBは削除しない（不正解一覧に残す）
+      srsEl.textContent='✨ 3連続正解！この問題をマスター！';
       srsEl.className='result-srs mastered';
     } else {
       entry.level=Math.min((entry.level||0)+1,4);
