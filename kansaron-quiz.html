@@ -1728,19 +1728,28 @@ function downloadWrongPDF(){
   var badQs=QUESTIONS.filter(function(q){return allBadIds.indexOf(q.id)>=0;})
     .sort(function(a,b){return((wrongDB[b.id]||0)+(unknownDB[b.id]||0))-((wrongDB[a.id]||0)+(unknownDB[a.id]||0));});
   if(badQs.length===0){alert('不正解の問題がありません');return;}
-  var qNumMap={};var chCount={};
-  QUESTIONS.forEach(function(q){var m=q.chapter.match(/第(\d+)章/);var cn=m?parseInt(m[1]):0;if(!chCount[cn])chCount[cn]=0;chCount[cn]++;qNumMap[q.id]='問題'+cn+'-'+chCount[cn];});
+  var circled='①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚';
+  function fmtCh(ch){var m=ch.match(/第(\d+)章\s*(.*)/);return m?m[1]+'.'+m[2]:ch;}
+  function getChSym(ch){var m=ch.match(/第(\d+)章/);if(m){var n=parseInt(m[1]);return n>=1&&n<=30?circled.charAt(n-1):n+'';}return'—';}
+  var secCount={};var qNumMap={};var pgMap={};
+  var lastCh='';var pgInCh=0;
+  QUESTIONS.forEach(function(q){
+    var key=q.chapter+'||'+q.section;if(!secCount[key])secCount[key]=0;secCount[key]++;
+    qNumMap[q.id]='問題'+secCount[key];
+    if(q.chapter!==lastCh){lastCh=q.chapter;pgInCh=0;}pgInCh++;
+    pgMap[q.id]=getChSym(q.chapter)+'-'+pgInCh;
+  });
   var now=new Date();
   var dateStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate();
   var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>監査論 不正解一覧 - '+dateStr+'</title><style>body{font-family:"Hiragino Sans","Meiryo","Noto Sans JP",sans-serif;padding:20px;font-size:12px}h1{font-size:18px;color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:8px}table{border-collapse:collapse;width:100%;margin-top:12px}th{background:#1a237e;color:#fff;padding:8px 6px;font-size:11px;text-align:left}td{border:1px solid #ccc;padding:6px;font-size:11px;vertical-align:top}tr:nth-child(even){background:#f5f5f5}.cnt{text-align:center;font-weight:700}.date{text-align:center}@media print{body{padding:10px}}</style></head><body>';
   html+='<h1>監査論 不正解・不明問題一覧</h1>';
   html+='<p>出力日: '+dateStr+' ／ 問題数: '+badQs.length+'問</p>';
-  html+='<table><thead><tr><th>問題番号</th><th>章</th><th>節</th><th>レベル</th><th>不正解</th><th>不明</th><th>初回回答日</th></tr></thead><tbody>';
+  html+='<table><thead><tr><th>ページ</th><th>章</th><th>節</th><th>問題番号</th><th>不正解</th><th>不明</th><th>初回回答日</th></tr></thead><tbody>';
   badQs.forEach(function(q,i){
     var wCnt=wrongDB[q.id]||0;var uCnt=unknownDB[q.id]||0;
     var aDate=answeredDB[q.id]?new Date(answeredDB[q.id]):null;
     var aStr=aDate?(aDate.getFullYear()+'/'+(aDate.getMonth()+1)+'/'+aDate.getDate()):'—';
-    html+='<tr><td class="cnt" style="font-weight:700">'+(qNumMap[q.id]||'—')+'</td><td>'+q.chapter+'</td><td>'+q.section+'</td><td class="cnt">'+q.level+'</td><td class="cnt" style="color:#c62828">'+wCnt+'</td><td class="cnt" style="color:#e65100">'+uCnt+'</td><td class="date">'+aStr+'</td></tr>';
+    html+='<tr><td class="cnt">'+(pgMap[q.id]||'—')+'</td><td>'+fmtCh(q.chapter)+'</td><td>'+q.section+'</td><td class="cnt" style="font-weight:700">'+(qNumMap[q.id]||'—')+'</td><td class="cnt" style="color:#c62828">'+wCnt+'</td><td class="cnt" style="color:#e65100">'+uCnt+'</td><td class="date">'+aStr+'</td></tr>';
   });
   html+='</tbody></table></body></html>';
   var w=window.open('','_blank');w.document.write(html);w.document.close();w.focus();setTimeout(function(){w.print();},500);
