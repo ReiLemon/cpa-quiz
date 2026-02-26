@@ -186,62 +186,17 @@ body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN',sans-serif;b
   .sh-tab{min-width:78px;padding:6px 10px}
   .btn-row{flex-direction:column}
 }
+/* highlight marker */
+mark.hl{background:#fff176;border-radius:2px;padding:0 1px;cursor:pointer}
+mark.hl.hl-orange{background:#ffcc80}
+mark.hl.hl-green{background:#a5d6a7}
+mark.hl.hl-pink{background:#f8bbd0}
+mark.hl.hl-blue{background:#90caf9}
+.hl-toolbar{position:fixed;z-index:999;background:#fff;border:1px solid #ccc;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.25);padding:6px 8px;display:none;gap:6px;align-items:center}
+.hl-toolbar button{border:none;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;line-height:26px;text-align:center}
+.hl-toolbar button:active{transform:scale(.9)}
 </style>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzBkNDdhMSIvPjx0ZXh0IHg9IjE2IiB5PSIyMyIgZm9udC1zaXplPSIxOCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+6LKh55CGPC90ZXh0Pjwvc3ZnPg==">
-<script type="module">
-import{initializeApp}from'https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js';
-import{getFirestore,doc,setDoc,getDoc}from'https://www.gstatic.com/firebasejs/11.3.0/firebase-firestore.js';
-const _fc={apiKey:"AIzaSyByImWNSABE69MCpTHbqYZzz6LZRKwplD4",authDomain:"cpa-quiz-6d1f9.firebaseapp.com",projectId:"cpa-quiz-6d1f9",storageBucket:"cpa-quiz-6d1f9.firebasestorage.app",messagingSenderId:"534803312241",appId:"1:534803312241:web:00dde6df4cbbedf1da35d0"};
-function _getSyncId(){let id=localStorage.getItem('cpa_sync_id');if(!id){id='u'+Math.random().toString(36).substr(2,9)+Date.now().toString(36);localStorage.setItem('cpa_sync_id',id);}return id;}
-const _app=initializeApp(_fc);const _fs=getFirestore(_app);
-window.fbSave=async function(key,obj){try{const id=_getSyncId();await setDoc(doc(_fs,'users',id,'d',key),{p:JSON.stringify(obj),t:Date.now()})}catch(e){console.warn('[FB save]',e);}};
-window.fbLoad=async function(key,cb){try{const id=_getSyncId();const s=await getDoc(doc(_fs,'users',id,'d',key));if(s.exists())cb(JSON.parse(s.data().p),s.data().t||0);}catch(e){console.warn('[FB load]',e);}};
-window.getCpaSyncId=_getSyncId;
-document.addEventListener('DOMContentLoaded',()=>{
-  // ── 同期ボタン（右上・小さく）──
-  const wrap=document.createElement('div');
-  wrap.style.cssText='position:fixed;top:8px;right:8px;z-index:9999;display:flex;flex-direction:column;align-items:flex-end;gap:4px';
-  const b1=document.createElement('button');
-  b1.textContent='☁';
-  b1.title='Sync IDをコピー';
-  b1.style.cssText='background:rgba(26,115,232,0.80);color:#fff;font-size:16px;width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;line-height:1;padding:0';
-  const b2=document.createElement('button');
-  b2.textContent='🔗';
-  b2.title='別端末と同期';
-  b2.style.cssText='background:rgba(80,80,80,0.75);color:#fff;font-size:16px;width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;line-height:1;padding:0;display:none';
-  wrap.appendChild(b1);wrap.appendChild(b2);document.body.appendChild(wrap);
-  b1.onclick=()=>{
-    if(b2.style.display==='none'){b2.style.display='block';return;}
-    const id=_getSyncId();
-    navigator.clipboard.writeText(id).catch(()=>prompt('Sync ID（コピーして別端末で使用）:',id));
-    b1.textContent='✓';setTimeout(()=>{b1.textContent='☁';},2000);
-    b2.style.display='none';
-  };
-  b2.onclick=()=>{const v=prompt('他の端末のSync IDを入力（現在のデータが上書きされます）:');if(v&&v.trim().length>5){localStorage.setItem('cpa_sync_id',v.trim());location.reload();}};
-  document.addEventListener('click',(e)=>{if(!wrap.contains(e.target))b2.style.display='none';});
-
-  // ── Firebase同期チェック（自動リロードなし・バナー通知）──
-  if(sessionStorage.getItem('_fbrl_zaimu_riron_v6')){sessionStorage.removeItem('_fbrl_zaimu_riron_v6');return;}
-  const _lt=parseInt(localStorage.getItem('_ts_zaimu_riron_v6')||'0');
-  const _w=(cb)=>{if(typeof window.fbLoad==='function')cb();else setTimeout(()=>_w(cb),300);};
-  _w(()=>{
-    window.fbLoad('zaimu_riron_v6',(d,ft)=>{
-      if(ft>_lt){
-        const bar=document.createElement('div');
-        bar.style.cssText='position:fixed;top:0;left:0;right:0;background:#1a73e8;color:#fff;text-align:center;padding:10px 16px;font-size:13px;z-index:10000;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.3)';
-        bar.textContent='☁ 他の端末の新しいデータがあります　→ タップして同期';
-        bar.onclick=()=>{
-          localStorage.setItem('zaimu_riron_v6',JSON.stringify(d));
-          localStorage.setItem('_ts_zaimu_riron_v6',ft+'');
-          sessionStorage.setItem('_fbrl_zaimu_riron_v6','1');
-          location.reload();
-        };
-        document.body.prepend(bar);
-      }
-    });
-  });
-});
-</script>
 </head>
 <body>
 
@@ -328,6 +283,10 @@ document.addEventListener('DOMContentLoaded',()=>{
       </div>
       <span class="due-badge" id="due-badge">今日 0問</span>
       <span class="q-count-badge" id="q-count-badge">― 問</span>
+      <div class="fgrp">
+        <button class="fb on" id="order-random" onclick="setQuizOrder('random')">🔀 ランダム</button>
+        <button class="fb" id="order-seq" onclick="setQuizOrder('seq')">📋 問題順</button>
+      </div>
       <button class="start-btn" onclick="startQuiz()">▶ 30問スタート</button>
     </div>
   </div>
@@ -448,6 +407,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     <div class="stbl">
       <div class="stbl-hd">
         <span>📈 セクション別正答率</span>
+        <button onclick="exportData()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:11px">📤 エクスポート</button>
+        <button onclick="document.getElementById('import-file').click()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:11px">📥 インポート</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
         <button onclick="resetData()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:11px">リセット</button>
       </div>
       <div id="sc-list"></div>
@@ -486,6 +448,7 @@ var SRS_DAYS = [0, 1, 3, 7, 14, 30];
 var activeLevels = {A:true,B:true,C:false};
 var activeChapter = 'all';
 var activeMode = 'all';
+var quizOrder='random'; // 'random' or 'seq'
 var queue=[], cur=0, answered=false;
 var sess={ok:0,ng:0,uk:0,times:[]};
 var sessItems=[];
@@ -493,7 +456,7 @@ var qStart=0, timerInt=null;
 var activeSessionIdx=0;
 
 var db={}, wrongDB={}, unknownDB={}, slowDB=[], bookmarks={}, sessHistory=[];
-var srsDB={}, memoMap={}, slow20DB={};
+var srsDB={}, memoMap={}, slow20DB={}, answeredDB={};
 
 function todayStart(){ return new Date().setHours(0,0,0,0); }
 function dayMs(n){ return n*86400000; }
@@ -506,41 +469,51 @@ function loadStorage(){
       db=d.db||{}; wrongDB=d.wrongDB||{}; unknownDB=d.unknownDB||{};
       slowDB=d.slowDB||[]; bookmarks=d.bookmarks||{}; sessHistory=d.sessHistory||[];
       srsDB=d.srsDB||{}; memoMap=d.memoMap||{}; slow20DB=d.slow20DB||{};
+      answeredDB=d.answeredDB||{};
+      // Backfill answeredDB from sessHistory for existing users
+      if(Object.keys(answeredDB).length===0 && sessHistory.length>0){
+        sessHistory.forEach(function(s){if(s.items)s.items.forEach(function(it){if(!answeredDB[it.id])answeredDB[it.id]=it.ts||s.ts||1;});});
+      }
     }
   }catch(e){}
 }
 function saveStorage(){
   try{
-    const _sd={db:db,wrongDB:wrongDB,unknownDB:unknownDB,slowDB:slowDB,bookmarks:bookmarks,sessHistory:sessHistory,srsDB:srsDB,memoMap:memoMap,slow20DB:slow20DB};
-    localStorage.setItem('zaimu_riron_v6',JSON.stringify(_sd));
-    localStorage.setItem('_ts_zaimu_riron_v6',Date.now()+'');
-    if(typeof window.fbSave==='function') window.fbSave('zaimu_riron_v6',_sd);
+    localStorage.setItem('zaimu_riron_v6',JSON.stringify({
+      db:db, wrongDB:wrongDB, unknownDB:unknownDB,
+      slowDB:slowDB, bookmarks:bookmarks, sessHistory:sessHistory,
+      srsDB:srsDB, memoMap:memoMap, slow20DB:slow20DB,
+      answeredDB:answeredDB
+    }));
   }catch(e){}
 }
 loadStorage();
+var refCheckDB=JSON.parse(localStorage.getItem('zaimu_riron_v6_refcheck')||'{}');
 updateCountBadge();
-document.addEventListener('DOMContentLoaded',function(){
-  if(sessionStorage.getItem('_fbrl_zaimu_riron_v6')){sessionStorage.removeItem('_fbrl_zaimu_riron_v6');return;}
-  var _lt=parseInt(localStorage.getItem('_ts_zaimu_riron_v6')||'0');
-  var _w=function(cb){if(typeof window.fbLoad==='function'){cb();}else{setTimeout(function(){_w(cb);},300);}};
-  _w(function(){window.fbLoad('zaimu_riron_v6',function(d,ft){if(ft>_lt){var bar=document.createElement('div');bar.style.cssText='position:fixed;top:0;left:0;right:0;background:#1a73e8;color:#fff;text-align:center;padding:10px 16px;font-size:13px;z-index:10000;cursor:pointer';bar.textContent='☁ 他の端末の新しいデータがあります　→ タップして同期';bar.onclick=function(){localStorage.setItem('zaimu_riron_v6',JSON.stringify(d));localStorage.setItem('_ts_zaimu_riron_v6',ft+'');sessionStorage.setItem('_fbrl_zaimu_riron_v6','1');location.reload();};document.body.prepend(bar);}});});
-});
-// ── Firebase クラウド同期 ──
-document.addEventListener('DOMContentLoaded',function(){
-  if(sessionStorage.getItem('_fbrl_zaimu_riron_v6')){sessionStorage.removeItem('_fbrl_zaimu_riron_v6');return;}
-  var _lt=parseInt(localStorage.getItem('_ts_zaimu_riron_v6')||'0');
-  var _w=function(cb){if(typeof window.fbLoad==='function'){cb();}else{setTimeout(function(){_w(cb);},300);}};
-  _w(function(){
-    window.fbLoad('zaimu_riron_v6',function(d,ft){
-      if(ft>_lt){
-        localStorage.setItem('zaimu_riron_v6',JSON.stringify(d));
-        localStorage.setItem('_ts_zaimu_riron_v6',ft+'');
-        sessionStorage.setItem('_fbrl_zaimu_riron_v6','1');
-        location.reload();
+
+// ===== REF CHECK SYSTEM =====
+function toggleRefCheck(qid,btn){
+  if(refCheckDB[qid]){delete refCheckDB[qid];}else{refCheckDB[qid]=Date.now();}
+  localStorage.setItem('zaimu_riron_v6_refcheck',JSON.stringify(refCheckDB));
+  if(btn){
+    if(refCheckDB[qid]){
+      btn.style.background='#e3f2fd';btn.style.color='#1565c0';btn.textContent='✓ 確認済';
+    }else{
+      btn.style.background='#ffebee';btn.style.color='#c62828';btn.textContent='未確認';
+    }
+    var row=btn.closest('.txt-q-row');
+    if(row){
+      var hdr=row.querySelector('.txt-q-hdr');
+      if(hdr) hdr.style.borderLeftColor=refCheckDB[qid]?'#1565c0':hdr.dataset.origBorder||'#c62828';
+      var detail=row.querySelector('.txt-q-detail');
+      var toggle=row.querySelector('.txt-q-toggle');
+      if(refCheckDB[qid] && detail && detail.style.display==='none'){
+        detail.style.display='block';
+        if(toggle) toggle.textContent='▲';
       }
-    });
-  });
-});
+    }
+  }
+}
 
 // ===== FILTERS =====
 function toggleLevel(lv){
@@ -564,6 +537,12 @@ function setMode(m,btn){
   ids.forEach(function(id){gi(id).classList.remove('on');});
   btn.classList.add('on');
   updateCountBadge();
+}
+
+function setQuizOrder(mode){
+  quizOrder=mode;
+  gi('order-random').classList.toggle('on',mode==='random');
+  gi('order-seq').classList.toggle('on',mode==='seq');
 }
 
 function getFiltered(){
@@ -624,15 +603,20 @@ function startQuiz(){
   var pool=getFiltered();
   hide('compl');hide('q-area');hide('q-empty');hide('prog-panel');
   if(pool.length===0){show('q-empty');return;}
-  // Build answered set from sessHistory
-  var _ansSet={};
-  sessHistory.forEach(function(s){if(s.items)s.items.forEach(function(it){_ansSet[it.id]=true;});});
-  // Separate unanswered and answered, shuffle each group
-  var _unans=pool.filter(function(q){return !_ansSet[q.id];});
-  var _ans=pool.filter(function(q){return !!_ansSet[q.id];});
+  // Separate unanswered and answered using answeredDB
+  var _unans=pool.filter(function(q){return !answeredDB[q.id];});
+  var _ans=pool.filter(function(q){return !!answeredDB[q.id];});
   function _shuffle(a){return a.slice().sort(function(){return Math.random()-.5;});}
-  var shuffled=_shuffle(_unans).concat(_shuffle(_ans));
-  queue=shuffled.slice(0,30);
+  // Check quiz order mode
+  var isSeq=(typeof quizOrder!=='undefined' && quizOrder==='seq');
+  var ordered;
+  if(isSeq){
+    ordered=_unans.concat(_ans);
+  } else {
+    ordered=_shuffle(_unans).concat(_shuffle(_ans));
+  }
+  var qmax=_unans.length>0?Math.min(_unans.length,30):Math.min(pool.length,30);
+  queue=ordered.slice(0,qmax);
   cur=0; answered=false;
   sess={ok:0,ng:0,uk:0,times:[]};
   sessItems=[];
@@ -709,12 +693,21 @@ function answerQ(choice){
     expl:q.explanation||''
   });
 
+  // Record in answeredDB (persistent, never lost)
+  if(!answeredDB[q.id]) answeredDB[q.id]=Date.now();
+
   // section stats
   var key=q.chapter+'||'+q.section;
   if(!db[key]) db[key]={ok:0,tot:0,ch:q.chapter,sc:q.section};
   db[key].tot++;
   if(ok) db[key].ok++;
-  if(!ok&&!unknown) wrongDB[q.id]=(wrongDB[q.id]||0)+1;
+  if(!ok&&!unknown){
+    wrongDB[q.id]=(wrongDB[q.id]||0)+1;
+    if(refCheckDB[q.id]){
+      delete refCheckDB[q.id];
+      localStorage.setItem('zaimu_riron_v6_refcheck',JSON.stringify(refCheckDB));
+    }
+  }
   if(unknown) unknownDB[q.id]=(unknownDB[q.id]||0)+1;
 
   // slow tracker
@@ -990,8 +983,100 @@ function renderAn(){
 
 function resetData(){
   if(!confirm('全学習データをリセットしますか？')) return;
-  db={};wrongDB={};unknownDB={};slowDB=[];bookmarks={};sessHistory=[];srsDB={};memoMap={};slow20DB={};
+  db={};wrongDB={};unknownDB={};slowDB=[];bookmarks={};sessHistory=[];srsDB={};memoMap={};slow20DB={};answeredDB={};refCheckDB={};
+  localStorage.removeItem('zaimu_riron_v6_refcheck');
   saveStorage(); renderAn();
+}
+
+// ===== DATA SYNC (EXPORT / IMPORT) =====
+function exportData(){
+  var data={
+    _app:'zaimu_riron_v6',
+    _exportedAt:new Date().toISOString(),
+    main:JSON.parse(localStorage.getItem('zaimu_riron_v6')||'{}'),
+    refcheck:JSON.parse(localStorage.getItem('zaimu_riron_v6_refcheck')||'{}'),
+    highlight:JSON.parse(localStorage.getItem('zaimu_riron_v6_hl')||'{}')
+  };
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  var d=new Date();
+  a.download='財務会計論理論_'+d.getFullYear()+(''+(d.getMonth()+1)).padStart(2,'0')+(''+d.getDate()).padStart(2,'0')+'_'+(''+d.getHours()).padStart(2,'0')+(''+d.getMinutes()).padStart(2,'0')+'.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  alert('エクスポート完了！\nファイルをiPadに送ってインポートすれば同期できます。');
+}
+function importData(input){
+  if(!input.files||!input.files[0]) return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var data=JSON.parse(e.target.result);
+      if(data._app && data._app!=='zaimu_riron_v6'){
+        alert('このファイルは財務会計論理論用ではありません（'+data._app+'）');
+        input.value='';return;
+      }
+      var mode=confirm('インポート方法を選択：\n\nOK → マージ（既存データと統合）\nキャンセル → 上書き（既存データを置き換え）');
+      if(mode){
+        var imp=data.main||data;
+        var cur=JSON.parse(localStorage.getItem('zaimu_riron_v6')||'{}');
+        var idb=imp.db||{};var cdb=cur.db||{};
+        Object.keys(idb).forEach(function(k){cdb[k]=Math.max(cdb[k]||0,idb[k]);});
+        cur.db=cdb;
+        var iw=imp.wrongDB||{};var cw=cur.wrongDB||{};
+        Object.keys(iw).forEach(function(k){cw[k]=Math.max(cw[k]||0,iw[k]);});
+        cur.wrongDB=cw;
+        var iu=imp.unknownDB||{};var cu=cur.unknownDB||{};
+        Object.keys(iu).forEach(function(k){cu[k]=Math.max(cu[k]||0,iu[k]);});
+        cur.unknownDB=cu;
+        var ia=imp.answeredDB||{};var ca=cur.answeredDB||{};
+        Object.keys(ia).forEach(function(k){
+          if(!ca[k]||ia[k]<ca[k]) ca[k]=ia[k];
+        });
+        cur.answeredDB=ca;
+        var is2=imp.srsDB||{};var cs=cur.srsDB||{};
+        Object.keys(is2).forEach(function(k){
+          if(!cs[k]||(is2[k].streak||0)>(cs[k].streak||0)) cs[k]=is2[k];
+        });
+        cur.srsDB=cs;
+        var im=imp.memoMap||{};var cm=cur.memoMap||{};
+        Object.keys(im).forEach(function(k){
+          if(!cm[k]||(im[k]||'').length>(cm[k]||'').length) cm[k]=im[k];
+        });
+        cur.memoMap=cm;
+        var ibk=imp.bookmarks||{};var cbk=cur.bookmarks||{};
+        Object.keys(ibk).forEach(function(k){if(!cbk[k])cbk[k]=ibk[k];});
+        cur.bookmarks=cbk;
+        var isl=imp.slow20DB||{};var csl=cur.slow20DB||{};
+        Object.keys(isl).forEach(function(k){if(!csl[k])csl[k]=isl[k];});
+        cur.slow20DB=csl;
+        var iss=imp.sessHistory||[];var css=cur.sessHistory||[];
+        var seenTs={};css.forEach(function(s){if(s.ts)seenTs[s.ts]=true;});
+        iss.forEach(function(s){if(s.ts&&!seenTs[s.ts]){css.push(s);seenTs[s.ts]=true;}});
+        css.sort(function(a,b){return(a.ts||0)-(b.ts||0);});
+        cur.sessHistory=css;
+        localStorage.setItem('zaimu_riron_v6',JSON.stringify(cur));
+        var irc=data.refcheck||{};var crc=JSON.parse(localStorage.getItem('zaimu_riron_v6_refcheck')||'{}');
+        Object.keys(irc).forEach(function(k){if(!crc[k])crc[k]=irc[k];});
+        localStorage.setItem('zaimu_riron_v6_refcheck',JSON.stringify(crc));
+        var ihl=data.highlight||{};var chl=JSON.parse(localStorage.getItem('zaimu_riron_v6_hl')||'{}');
+        Object.keys(ihl).forEach(function(k){if(!chl[k])chl[k]=ihl[k];});
+        localStorage.setItem('zaimu_riron_v6_hl',JSON.stringify(chl));
+      } else {
+        if(data.main) localStorage.setItem('zaimu_riron_v6',JSON.stringify(data.main));
+        if(data.refcheck) localStorage.setItem('zaimu_riron_v6_refcheck',JSON.stringify(data.refcheck));
+        if(data.highlight) localStorage.setItem('zaimu_riron_v6_hl',JSON.stringify(data.highlight));
+      }
+      loadStorage();
+      refCheckDB=JSON.parse(localStorage.getItem('zaimu_riron_v6_refcheck')||'{}');
+      renderAn();updateCountBadge();
+      alert('インポート完了！（'+( mode?'マージ':'上書き')+'モード）\nエクスポート日時: '+(data._exportedAt||'不明'));
+    }catch(ex){
+      alert('インポート失敗: ファイル形式が不正です\n'+ex.message);
+    }
+    input.value='';
+  };
+  reader.readAsText(input.files[0]);
 }
 
 // ===== TEXTBOOK REFERENCE =====
@@ -1063,20 +1148,27 @@ function renderTextRef(){
     qWrongHist[id].sort(function(a,b){return a.ts-b.ts;});
   });
 
+  // Get most recent wrong timestamp for a question
+  function getLastWrongTs(qid){
+    var hist=qWrongHist[qid];
+    if(!hist||hist.length===0) return 0;
+    return hist[hist.length-1].ts||0;
+  }
+
   var badQs=QUESTIONS.filter(function(q){return allBadIds.indexOf(q.id)>=0;})
     .sort(function(a,b){
-      var ca=(wrongDB[b.id]||0)+(unknownDB[b.id]||0);
-      var cb=(wrongDB[a.id]||0)+(unknownDB[a.id]||0);
-      return ca-cb;
+      return getLastWrongTs(b.id)-getLastWrongTs(a.id);
     });
 
-  var bySection={};
+  // Group by chapter instead of section
+  var byCh={};
+  var chOrder=[];
   badQs.forEach(function(q){
-    if(!bySection[q.section]) bySection[q.section]=[];
-    bySection[q.section].push(q);
+    var ch=q.chapter||'不明';
+    if(!byCh[ch]){byCh[ch]=[];chOrder.push(ch);}
+    byCh[ch].push(q);
   });
 
-  var volOrder=['テキスト①','テキスト②','テキスト③','テキスト⑦','テキスト⑧','テキスト⑨','テキスト⑩','テキスト⑪','テキスト⑫'];
   var html='';
 
   var noVolQs=badQs.filter(function(q){ var pi=PAGES[q.section]; return !pi; });
@@ -1084,11 +1176,12 @@ function renderTextRef(){
   function qRowHtml(q){
     var isWrong=!!wrongDB[q.id];
     var isUk=!!unknownDB[q.id];
+    var isChecked=!!refCheckDB[q.id];
     var wCnt=wrongDB[q.id]||0;
     var uCnt=unknownDB[q.id]||0;
 
     // Color coding: left border only, neutral background
-    var borderColor=isWrong&&isUk?'#7b1fa2':isWrong?'#c62828':'#e65100';
+    var borderColor=isChecked?'#1565c0':(isWrong&&isUk?'#7b1fa2':isWrong?'#c62828':'#e65100');
     var bgColor='#ffffff';
 
     // Badge chips in header
@@ -1160,80 +1253,66 @@ function renderTextRef(){
       // ⑥ SRS streak
       +(srsE&&srsE.streak>0&&srsE.level<5?'<div style="font-size:11px;color:#1565c0;margin-top:4px">連続正解 '+srsE.streak+'/3 — あと'+(3-srsE.streak)+'回でマスター</div>':'')
 
+      +'<div style="margin-top:10px;display:flex;align-items:center;gap:8px">'
+      +'<button class="ref-check-btn" data-qid="'+q.id+'" onclick="toggleRefCheck('+q.id+',this);event.stopPropagation()" style="border:none;border-radius:4px;padding:2px 10px;font-size:11px;font-weight:700;cursor:pointer;'+(refCheckDB[q.id]?'background:#e3f2fd;color:#1565c0':'background:#ffebee;color:#c62828')+'">'+(refCheckDB[q.id]?'✓ 確認済':'未確認')+'</button>'
+      +'</div>'
+
       +'</div></div>';
   }
 
-  volOrder.forEach(function(vol){
-    var secKeys=Object.keys(bySection).filter(function(sec){
-      var pi=PAGES[sec]; return pi&&pi.vol===vol;
-    });
-    secKeys.sort(function(a,b){
-      var pa=PAGES[a]?parseInt((PAGES[a].page||'p.0').replace(/[^\d].*/,''))||0:0;
-      var pb=PAGES[b]?parseInt((PAGES[b].page||'p.0').replace(/[^\d].*/,''))||0:0;
-      return pa-pb;
-    });
-    if(secKeys.length===0) return;
-    var totalQ=secKeys.reduce(function(a,s){return a+bySection[s].length;},0);
-    html+='<div style="background:#1565c0;color:#fff;padding:10px 16px;border-radius:6px;margin:16px 0 4px;display:flex;justify-content:space-between;align-items:center">'
-      +'<span style="font-size:14px;font-weight:700">📚 '+vol+'</span>'
-      +'<span style="font-size:11px;opacity:.75">'+secKeys.length+'セクション・'+totalQ+'問</span></div>';
-    secKeys.forEach(function(sec){
-      var qs=bySection[sec];
-      var pi=PAGES[sec];
-      html+='<div class="txt-sec-card" style="margin-bottom:0;border:1px solid #dde3f0;border-radius:6px;overflow:hidden;margin-bottom:10px">';
-      var secLabel=pi?(pi.chapter&&pi.tbname
-        ?'<span style="font-size:10px;color:#6b82aa">'+escHtml(pi.chapter)+'</span>'
-         +'<span style="color:#aabbdd;margin:0 3px">›</span>'
-         +'<span style="font-size:10px;color:#6b82aa">'+escHtml(pi.section)+'</span>'
-         +'<span style="color:#aabbdd;margin:0 3px">›</span>'
-         +'<span style="font-size:12px;font-weight:700;color:#1c3a6e">'+pi.tbnum+'.'+escHtml(pi.tbname)+'</span>'
-         +(pi.page?'<span style="font-size:10px;color:#6b82aa;background:#dde8f8;padding:2px 8px;border-radius:8px;margin-left:6px">'+escHtml(pi.page)+'</span>':'')
-        :escHtml(sec)):escHtml(sec);
-      html+='<div class="txt-sec-hdr" style="background:#eef2fb;padding:9px 14px;border-bottom:1px solid #dde3f0"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">'
-        +secLabel
-        +'</div><span class="txt-cnt-bdg">'+qs.length+'問</span></div>';
-      qs.forEach(function(q){ html+=qRowHtml(q); });
-      html+='</div>';
-    });
+  // Render chapter-based collapsible groups
+  chOrder.forEach(function(ch,ci){
+    var qs=byCh[ch];
+    var checkedCnt=qs.filter(function(q){return !!refCheckDB[q.id];}).length;
+    var chId='wrongCh'+ci;
+    html+='<div class="wrong-ch-group" style="margin-bottom:10px">'
+      +'<div class="wrong-ch-hdr" data-target="'+chId+'" style="background:linear-gradient(135deg,#ef6c00,#ff8f00);color:#fff;padding:11px 16px;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">'
+      +'<span style="font-size:13px;font-weight:700">📚 '+escHtml(ch)+'</span>'
+      +'<span style="display:flex;align-items:center;gap:8px">'
+      +'<span style="font-size:10px;opacity:.85">確認 '+checkedCnt+'/'+qs.length+'</span>'
+      +'<span style="font-size:11px;opacity:.75">'+qs.length+'問</span>'
+      +'<span class="wrong-ch-arrow" style="font-size:12px;transition:transform .2s">▼</span>'
+      +'</span></div>'
+      +'<div id="'+chId+'" class="wrong-ch-body" style="display:none;border:1px solid #dde3f0;border-top:none;border-radius:0 0 8px 8px;overflow:hidden">';
+    qs.forEach(function(q){ html+=qRowHtml(q); });
+    html+='</div></div>';
   });
-
-  // Sections not in PAGES (broad chapter sections)
-  if(noVolQs.length>0){
-    var byCh={};
-    noVolQs.forEach(function(q){ if(!byCh[q.chapter]) byCh[q.chapter]=[]; byCh[q.chapter].push(q); });
-    Object.keys(byCh).forEach(function(ch){
-      var qs=byCh[ch];
-      html+='<div style="background:#546e7a;color:#fff;padding:9px 14px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">'
-        +'<span style="font-size:14px;font-weight:700">📚 '+escHtml(ch)+'</span>'
-        +'<span style="font-size:11px;opacity:.75">'+qs.length+'問</span></div>';
-      html+='<div class="txt-sec-card" style="margin-bottom:0;border:1px solid #dde3f0;border-radius:6px;overflow:hidden;margin-bottom:10px">';
-      qs.forEach(function(q){ html+=qRowHtml(q); });
-      html+='</div>';
-    });
-  }
 
   gi('text-body').innerHTML=html;
   _textClickBound=false;
   bindTextClick();
+
+  // 章ヘッダーのクリックで折りたたみ開閉
+  var chHdrs=document.querySelectorAll('.wrong-ch-hdr');
+  for(var i=0;i<chHdrs.length;i++){
+    chHdrs[i].addEventListener('click',function(){
+      var tid=this.getAttribute('data-target');
+      var body=document.getElementById(tid);
+      if(!body)return;
+      var arrow=this.querySelector('.wrong-ch-arrow');
+      if(body.style.display==='none'){
+        body.style.display='block';
+        if(arrow)arrow.style.transform='rotate(180deg)';
+      }else{
+        body.style.display='none';
+        if(arrow)arrow.style.transform='';
+      }
+    });
+  }
 }
 
 function renderProg(){
-  var _ansSet={};
-  sessHistory.forEach(function(s){
-    if(!s.items) return;
-    s.items.forEach(function(it){ _ansSet[it.id]=true; });
-  });
   var chTotal={}, chDone={};
   QUESTIONS.forEach(function(q){
     if(!chTotal[q.chapter]) chTotal[q.chapter]=0;
     chTotal[q.chapter]++;
-    if(_ansSet[q.id]){
+    if(answeredDB[q.id]){
       if(!chDone[q.chapter]) chDone[q.chapter]=0;
       chDone[q.chapter]++;
     }
   });
   var totalAll=QUESTIONS.length;
-  var doneAll=Object.keys(_ansSet).length;
+  var doneAll=Object.keys(answeredDB).length;
   var pctAll=totalAll>0?Math.round(doneAll/totalAll*100):0;
 
   var html='<div style="background:#fff;border:1px solid #dde3f0;border-radius:8px;padding:16px 18px;margin-bottom:14px">'
@@ -1452,5 +1531,158 @@ function showTab(name){
 function gi(id){return document.getElementById(id);}
 function show(id){var el=gi(id);if(el)el.style.display='block';}
 function hide(id){var el=gi(id);if(el)el.style.display='none';}
+
+// ===== HIGHLIGHT MARKER SYSTEM =====
+(function(){
+  var HL_KEY='zaimu_riron_v6_hl';
+  var hlDB=JSON.parse(localStorage.getItem(HL_KEY)||'{}');
+
+  var tb=document.createElement('div');
+  tb.className='hl-toolbar';
+  tb.innerHTML='<button style="background:#fff176" data-hlc="">Y</button>'
+    +'<button style="background:#ffcc80" data-hlc="hl-orange">O</button>'
+    +'<button style="background:#a5d6a7" data-hlc="hl-green">G</button>'
+    +'<button style="background:#f8bbd0" data-hlc="hl-pink">P</button>'
+    +'<button style="background:#90caf9" data-hlc="hl-blue">B</button>'
+    +'<button style="background:#eee;font-size:12px" data-hlc="__clear">✕</button>';
+  document.body.appendChild(tb);
+
+  var _sel=null, _qid=null;
+
+  document.addEventListener('mouseup',function(e){
+    setTimeout(function(){
+      var sel=window.getSelection();
+      if(!sel||sel.isCollapsed||!sel.rangeCount){tb.style.display='none';return;}
+      var range=sel.getRangeAt(0);
+      var container=range.commonAncestorContainer;
+      if(container.nodeType===3) container=container.parentElement;
+      var detail=container.closest?container.closest('.txt-q-detail'):null;
+      if(!detail){tb.style.display='none';return;}
+      var row=detail.closest('.txt-q-row');
+      if(!row){tb.style.display='none';return;}
+      var btn=row.querySelector('.ref-check-btn');
+      var qid=btn?btn.getAttribute('data-qid'):null;
+      if(!qid){
+        var qt=row.querySelector('.txt-q-qtext');
+        qid=qt?'h'+hashStr(qt.textContent):null;
+      }
+      _sel=sel; _qid=qid;
+      var rect=range.getBoundingClientRect();
+      tb.style.left=Math.max(4,Math.min(rect.left,window.innerWidth-200))+'px';
+      tb.style.top=(rect.top-42+window.scrollY)+'px';
+      tb.style.display='flex';
+    },10);
+  });
+
+  document.addEventListener('mousedown',function(e){
+    if(!tb.contains(e.target)) tb.style.display='none';
+  });
+
+  tb.addEventListener('click',function(e){
+    e.stopPropagation();
+    var btn=e.target.closest('button');
+    if(!btn) return;
+    var hlc=btn.getAttribute('data-hlc');
+    if(hlc==='__clear'){removeHL();}else{applyHL(hlc);}
+    tb.style.display='none';
+    window.getSelection().removeAllRanges();
+  });
+
+  function applyHL(cls){
+    if(!_sel||_sel.isCollapsed) return;
+    var range=_sel.getRangeAt(0);
+    var txt=range.toString();
+    if(!txt.trim()) return;
+    var mark=document.createElement('mark');
+    mark.className='hl'+(cls?' '+cls:'');
+    try{range.surroundContents(mark);}catch(ex){
+      var frag=range.extractContents();
+      mark.appendChild(frag);
+      range.insertNode(mark);
+    }
+    _sel.removeAllRanges();
+    if(_qid) saveHL(_qid);
+  }
+
+  function removeHL(){
+    if(!_sel||_sel.isCollapsed) return;
+    var range=_sel.getRangeAt(0);
+    var container=range.commonAncestorContainer;
+    if(container.nodeType===3) container=container.parentElement;
+    var detail=container.closest('.txt-q-detail');
+    if(!detail) return;
+    var marks=detail.querySelectorAll('mark.hl');
+    marks.forEach(function(m){
+      if(range.intersectsNode(m)){
+        var parent=m.parentNode;
+        while(m.firstChild) parent.insertBefore(m.firstChild,m);
+        parent.removeChild(m);
+        parent.normalize();
+      }
+    });
+    _sel.removeAllRanges();
+    if(_qid) saveHL(_qid);
+  }
+
+  function saveHL(qid){
+    var row=document.querySelector('.ref-check-btn[data-qid="'+qid+'"]');
+    if(!row) return;
+    row=row.closest('.txt-q-row');
+    if(!row) return;
+    var detail=row.querySelector('.txt-q-detail');
+    if(!detail) return;
+    var marks=detail.querySelectorAll('mark.hl');
+    if(marks.length===0){delete hlDB[qid];}else{
+      var arr=[];
+      marks.forEach(function(m){
+        arr.push({t:m.textContent,c:m.className.replace('hl','').trim()});
+      });
+      hlDB[qid]=arr;
+    }
+    try{localStorage.setItem(HL_KEY,JSON.stringify(hlDB));}catch(ex){}
+  }
+
+  function restoreHL(detail,qid){
+    if(!hlDB[qid]||!hlDB[qid].length) return;
+    var entries=hlDB[qid];
+    entries.forEach(function(entry){
+      var walker=document.createTreeWalker(detail,NodeFilter.SHOW_TEXT,null,false);
+      var node;
+      while(node=walker.nextNode()){
+        var idx=node.textContent.indexOf(entry.t);
+        if(idx>=0 && !node.parentElement.closest('mark.hl')){
+          var range=document.createRange();
+          range.setStart(node,idx);
+          range.setEnd(node,idx+entry.t.length);
+          var mark=document.createElement('mark');
+          mark.className='hl'+(entry.c?' '+entry.c:'');
+          try{range.surroundContents(mark);}catch(ex){}
+          break;
+        }
+      }
+    });
+  }
+
+  var textBody=document.getElementById('text-body');
+  if(textBody){
+    var observer=new MutationObserver(function(muts){
+      muts.forEach(function(mut){
+        if(mut.type==='attributes'&&mut.attributeName==='style'){
+          var el=mut.target;
+          if(el.classList&&el.classList.contains('txt-q-detail')&&el.style.display!=='none'){
+            var row=el.closest('.txt-q-row');
+            if(!row) return;
+            var btn=row.querySelector('.ref-check-btn');
+            var qid=btn?btn.getAttribute('data-qid'):null;
+            if(qid) restoreHL(el,qid);
+          }
+        }
+      });
+    });
+    observer.observe(textBody,{attributes:true,subtree:true,attributeFilter:['style']});
+  }
+
+  function hashStr(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return Math.abs(h);}
+})();
 </script>
 </body></html>
