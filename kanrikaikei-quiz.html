@@ -693,8 +693,9 @@ function answerQ(choice){
     var remaining=3-entry.streak;
     if(entry.streak>=3){
       entry.level=5; // mastered
-      // wrongDB/unknownDBは削除しない（不正解一覧に残す）
-      srsEl.textContent='✨ 3連続正解！この問題をマスター！';
+      delete wrongDB[q.id];
+      delete unknownDB[q.id];
+      srsEl.textContent='✨ 3連続正解！この問題をマスター！苦手リストから卒業しました';
       srsEl.className='result-srs mastered';
     } else {
       entry.level=Math.min((entry.level||0)+1,4);
@@ -1548,7 +1549,6 @@ function showTab(name){
 function gi(id){return document.getElementById(id);}
 function show(id){var el=gi(id);if(el)el.style.display='block';}
 function hide(id){var el=gi(id);if(el)el.style.display='none';}
-
 // ===== HIGHLIGHT MARKER SYSTEM =====
 (function(){
   var HL_KEY='kanri_v6_hl';
