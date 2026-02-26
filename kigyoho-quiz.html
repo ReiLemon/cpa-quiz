@@ -376,6 +376,7 @@ mark.hl.hl-blue{background:#90caf9}
       <div class="stbl-hd">
         <span>❌ 間違い・わからない 問題一覧</span>
         <span id="wq-count" style="font-size:11px;opacity:.8"></span>
+        <button onclick="downloadWrongPDF()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:11px">📄 PDF出力</button>
       </div>
       <div id="wq-list" style="padding:12px"></div>
     </div>
@@ -1668,6 +1669,32 @@ function hide(id){var el=gi(id);if(el)el.style.display='none';}
 
   function hashStr(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return Math.abs(h);}
 })();
+
+function downloadWrongPDF(){
+  var wrongIds=Object.keys(wrongDB).map(Number);
+  var unknownIds=Object.keys(unknownDB).map(Number);
+  var allBadIds=[];
+  wrongIds.forEach(function(id){if(allBadIds.indexOf(id)<0)allBadIds.push(id);});
+  unknownIds.forEach(function(id){if(allBadIds.indexOf(id)<0)allBadIds.push(id);});
+  var badQs=QUESTIONS.filter(function(q){return allBadIds.indexOf(q.id)>=0;})
+    .sort(function(a,b){return((wrongDB[b.id]||0)+(unknownDB[b.id]||0))-((wrongDB[a.id]||0)+(unknownDB[a.id]||0));});
+  if(badQs.length===0){alert('不正解の問題がありません');return;}
+  var now=new Date();
+  var dateStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate();
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>企業法 不正解一覧 - '+dateStr+'</title><style>body{font-family:"Hiragino Sans","Meiryo","Noto Sans JP",sans-serif;padding:20px;font-size:12px}h1{font-size:18px;color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:8px}table{border-collapse:collapse;width:100%;margin-top:12px}th{background:#1a237e;color:#fff;padding:8px 6px;font-size:11px;text-align:left}td{border:1px solid #ccc;padding:6px;font-size:11px;vertical-align:top}tr:nth-child(even){background:#f5f5f5}.cnt{text-align:center;font-weight:700}.date{text-align:center}@media print{body{padding:10px}}</style></head><body>';
+  html+='<h1>企業法 不正解・不明問題一覧</h1>';
+  html+='<p>出力日: '+dateStr+' ／ 問題数: '+badQs.length+'問</p>';
+  html+='<table><thead><tr><th>No.</th><th>ID</th><th>章</th><th>節</th><th>レベル</th><th>不正解</th><th>不明</th><th>初回回答日</th></tr></thead><tbody>';
+  badQs.forEach(function(q,i){
+    var wCnt=wrongDB[q.id]||0;var uCnt=unknownDB[q.id]||0;
+    var aDate=answeredDB[q.id]?new Date(answeredDB[q.id]):null;
+    var aStr=aDate?(aDate.getFullYear()+'/'+(aDate.getMonth()+1)+'/'+aDate.getDate()):'—';
+    html+='<tr><td class="cnt">'+(i+1)+'</td><td class="cnt">'+q.id+'</td><td>'+q.chapter+'</td><td>'+q.section+'</td><td class="cnt">'+q.level+'</td><td class="cnt" style="color:#c62828">'+wCnt+'</td><td class="cnt" style="color:#e65100">'+uCnt+'</td><td class="date">'+aStr+'</td></tr>';
+  });
+  html+='</tbody></table></body></html>';
+  var w=window.open('','_blank');w.document.write(html);w.document.close();w.focus();setTimeout(function(){w.print();},500);
+}
+
 </script>
 <div id="firebase-sync-config" data-key="kigyou_v6" style="display:none"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
