@@ -487,16 +487,18 @@ function saveStorage(){
       srsDB:srsDB, memoMap:memoMap, slow20DB:slow20DB,
       answeredDB:answeredDB
     });
-    if(window._firebaseUpload) window._firebaseUpload();
+    try{if(window._firebaseUpload) window._firebaseUpload();}catch(ex){}
 
   }catch(e){}
 }
 loadStorage();
 // ===== FIREBASE SYNC =====
 (function(){
-  var FB_KEY = 'zaimu_riron_v6'; // change per app
+  try{
+  if(typeof firebase==='undefined'){console.warn('Firebase SDK not loaded');return;}
+  var FB_KEY = 'zaimu_riron_v6';
   var USER_DOC = 'users/u5wnfjuskrmm1bl4z0';
-  
+
   if(!firebase.apps.length){
     firebase.initializeApp({
       apiKey:"AIzaSyByImWNSABE69MCpTHbqYZzz6LZRKwplD4",
@@ -654,6 +656,7 @@ loadStorage();
     showSync('❌ 読込エラー', '#ef5350');
     console.error('Firebase download error:', e);
   });
+  }catch(ex){console.warn('Firebase sync init error:',ex);}
 })();
 
 
