@@ -1733,29 +1733,12 @@ function downloadWrongPDF(){
   if(badQs.length===0){alert('不正解の問題がありません');return;}
   var circled='①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚';
   function fmtCh(ch){var m=ch.match(/第(\d+)章\s*(.*)/);if(m)return m[1]+'.'+m[2];var idx=circled.indexOf(ch.charAt(0));if(idx>=0)return(idx+1)+'.'+ch.substring(1).replace(/^\s+/,'');return ch;}
-  // catch-all節を特定（章内で最大問題数の節、15問超かつ他の節がある場合）
-  var chSecCnt={};
-  QUESTIONS.forEach(function(q){var k=q.chapter+'||'+q.section;chSecCnt[k]=(chSecCnt[k]||0)+1;});
-  var chSecs={};
-  Object.keys(chSecCnt).forEach(function(k){var p=k.split('||');var ch=p[0];if(!chSecs[ch])chSecs[ch]=[];chSecs[ch].push({sec:p[1],cnt:chSecCnt[k]});});
-  var catchAll={};
-  Object.keys(chSecs).forEach(function(ch){var ss=chSecs[ch];if(ss.length<=1)return;var mx=ss[0];ss.forEach(function(s){if(s.cnt>mx.cnt)mx=s;});if(mx.cnt>15)catchAll[ch+'||'+mx.sec]=true;});
-  // 問題番号を計算：catch-all問題は直前のspecific節に割り当て
-  var lastSpec={};var secCount={};var qNumMap={};var qSecMap={};
+  function getChNum(ch){var m=ch.match(/第(\d+)章/);return m?m[1]:'?';}
+  // 問題番号を章内通し番号で計算（問題X-Y形式）
+  var chCount={};var qNumMap={};
   QUESTIONS.forEach(function(q){
-    var key=q.chapter+'||'+q.section;
-    if(catchAll[key]){
-      var assigned=lastSpec[q.chapter]||q.section;
-      var akey=q.chapter+'||'+assigned;
-      secCount[akey]=(secCount[akey]||0)+1;
-      qNumMap[q.id]='問題'+secCount[akey];
-      qSecMap[q.id]=assigned;
-    }else{
-      lastSpec[q.chapter]=q.section;
-      secCount[key]=(secCount[key]||0)+1;
-      qNumMap[q.id]='問題'+secCount[key];
-      qSecMap[q.id]=q.section;
-    }
+    chCount[q.chapter]=(chCount[q.chapter]||0)+1;
+    qNumMap[q.id]='問題'+getChNum(q.chapter)+'-'+chCount[q.chapter];
   });
   var now=new Date();
   var dateStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate();
@@ -1768,7 +1751,7 @@ function downloadWrongPDF(){
     var aDate=answeredDB[q.id]?new Date(answeredDB[q.id]):null;
     var aStr=aDate?(aDate.getFullYear()+'/'+(aDate.getMonth()+1)+'/'+aDate.getDate()):'—';
     var pg=q.page_marker||'—';
-    var sec=qSecMap[q.id]||q.section;var pi=PAGES[sec];var pgStr=pi?(pi.vol+' '+pi.page):'—';
+    var sec=q.section;var pi=PAGES[sec];var pgStr=pi?(pi.vol+' '+pi.page):'—';
     html+='<tr><td class="cnt">'+pg+'</td><td>'+fmtCh(q.chapter)+'</td><td>'+sec+'</td><td class="cnt" style="font-weight:700">'+(qNumMap[q.id]||'—')+'</td><td class="cnt" style="color:#c62828">'+wCnt+'</td><td class="cnt" style="color:#e65100">'+uCnt+'</td><td class="date">'+aStr+'</td><td>'+pgStr+'</td></tr>';
   });
   html+='</tbody></table></body></html>';
