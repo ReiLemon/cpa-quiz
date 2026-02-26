@@ -197,8 +197,6 @@ mark.hl.hl-blue{background:#90caf9}
 .hl-toolbar button:active{transform:scale(.9)}
 </style>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzBkNDdhMSIvPjx0ZXh0IHg9IjE2IiB5PSIyMyIgZm9udC1zaXplPSIxOCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+6LKh55CGPC90ZXh0Pjwvc3ZnPg==">
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -486,180 +484,10 @@ function saveStorage(){
       slowDB:slowDB, bookmarks:bookmarks, sessHistory:sessHistory,
       srsDB:srsDB, memoMap:memoMap, slow20DB:slow20DB,
       answeredDB:answeredDB
-    });
-    try{if(window._firebaseUpload) window._firebaseUpload();}catch(ex){}
-
+    }));
   }catch(e){}
 }
 loadStorage();
-// ===== FIREBASE SYNC =====
-(function(){
-  try{
-  if(typeof firebase==='undefined'){console.warn('Firebase SDK not loaded');return;}
-  var FB_KEY = 'zaimu_riron_v6';
-  var USER_DOC = 'users/u5wnfjuskrmm1bl4z0';
-
-  if(!firebase.apps.length){
-    firebase.initializeApp({
-      apiKey:"AIzaSyByImWNSABE69MCpTHbqYZzz6LZRKwplD4",
-      authDomain:"cpa-quiz-6d1f9.firebaseapp.com",
-      projectId:"cpa-quiz-6d1f9",
-      storageBucket:"cpa-quiz-6d1f9.firebasestorage.app",
-      messagingSenderId:"534803312241",
-      appId:"1:534803312241:web:00dde6df4cbbedf1da35d0"
-    });
-  }
-  var fsdb = firebase.firestore();
-  var userRef = fsdb.collection('users').doc('u5wnfjuskrmm1bl4z0');
-  var _syncTimer = null;
-  var _syncing = false;
-  
-  // Sync indicator
-  var syncDot = document.createElement('div');
-  syncDot.id = 'sync-dot';
-  syncDot.style.cssText = 'position:fixed;bottom:8px;right:8px;z-index:9999;font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(0,0,0,.6);color:#aaa;pointer-events:none;transition:opacity .3s';
-  syncDot.textContent = '⏳ 同期中...';
-  document.body.appendChild(syncDot);
-  
-  function showSync(msg, color){
-    syncDot.textContent = msg;
-    syncDot.style.color = color || '#aaa';
-    syncDot.style.opacity = '1';
-    clearTimeout(syncDot._hideT);
-    syncDot._hideT = setTimeout(function(){ syncDot.style.opacity = '0'; }, 3000);
-  }
-  
-  // Upload local data to Firestore
-  window._firebaseUpload = function(){
-    if(_syncing) return;
-    clearTimeout(_syncTimer);
-    _syncTimer = setTimeout(function(){
-      _syncing = true;
-      showSync('⬆ 保存中...', '#ffa726');
-      var payload = {};
-      payload[FB_KEY] = {
-        main: JSON.parse(localStorage.getItem(FB_KEY) || '{}'),
-        refcheck: JSON.parse(localStorage.getItem(FB_KEY + '_refcheck') || '{}'),
-        highlight: JSON.parse(localStorage.getItem(FB_KEY + '_hl') || '{}'),
-        _updatedAt: new Date().toISOString()
-      };
-      userRef.set(payload, {merge: true}).then(function(){
-        _syncing = false;
-        showSync('✅ 同期完了', '#66bb6a');
-      }).catch(function(e){
-        _syncing = false;
-        showSync('❌ 同期エラー', '#ef5350');
-        console.error('Firebase upload error:', e);
-      });
-    }, 500);
-  };
-  
-  // Download from Firestore and merge with local on page load
-  showSync('⬇ 読込中...', '#42a5f5');
-  userRef.get().then(function(doc){
-    if(!doc.exists || !doc.data()[FB_KEY]){
-      showSync('✅ ローカルデータ使用', '#66bb6a');
-      window._firebaseUpload(); // push local to cloud
-      return;
-    }
-    var remote = doc.data()[FB_KEY];
-    
-    // Merge main data
-    if(remote.main){
-      var local = JSON.parse(localStorage.getItem(FB_KEY) || '{}');
-      // Smart merge: compare and keep best data
-      var rm = remote.main;
-      // db: keep highest count per question
-      if(rm.db){
-        if(!local.db) local.db = {};
-        for(var k in rm.db){
-          if(!local.db[k]) local.db[k] = rm.db[k];
-          else {
-            local.db[k].o = Math.max(local.db[k].o||0, rm.db[k].o||0);
-            local.db[k].x = Math.max(local.db[k].x||0, rm.db[k].x||0);
-            local.db[k].ts = Math.max(local.db[k].ts||0, rm.db[k].ts||0);
-          }
-        }
-      }
-      // wrongDB, unknownDB, bookmarks, answeredDB: union (keep if exists in either)
-      ['wrongDB','unknownDB','bookmarks','answeredDB'].forEach(function(field){
-        if(rm[field]){
-          if(!local[field]) local[field] = {};
-          for(var k in rm[field]){
-            if(!local[field][k]) local[field][k] = rm[field][k];
-            else if(typeof rm[field][k]==='number' && typeof local[field][k]==='number'){
-              local[field][k] = Math.min(local[field][k], rm[field][k]); // earlier timestamp
-            }
-          }
-        }
-      });
-      // slowDB: union arrays
-      if(rm.slowDB && Array.isArray(rm.slowDB)){
-        if(!local.slowDB) local.slowDB = [];
-        var slowSet = {};
-        local.slowDB.forEach(function(id){ slowSet[id]=true; });
-        rm.slowDB.forEach(function(id){ if(!slowSet[id]){ local.slowDB.push(id); } });
-      }
-      // slow20DB: union
-      if(rm.slow20DB){
-        if(!local.slow20DB) local.slow20DB = {};
-        for(var k in rm.slow20DB){ if(!local.slow20DB[k]) local.slow20DB[k] = rm.slow20DB[k]; }
-      }
-      // srsDB: keep higher level
-      if(rm.srsDB){
-        if(!local.srsDB) local.srsDB = {};
-        for(var k in rm.srsDB){
-          if(!local.srsDB[k]) local.srsDB[k] = rm.srsDB[k];
-          else { local.srsDB[k].lv = Math.max(local.srsDB[k].lv||0, rm.srsDB[k].lv||0); }
-        }
-      }
-      // memoMap: keep longer memo
-      if(rm.memoMap){
-        if(!local.memoMap) local.memoMap = {};
-        for(var k in rm.memoMap){
-          if(!local.memoMap[k]) local.memoMap[k] = rm.memoMap[k];
-          else if((rm.memoMap[k]||'').length > (local.memoMap[k]||'').length) local.memoMap[k] = rm.memoMap[k];
-        }
-      }
-      // sessHistory: merge by dedup on timestamp
-      if(rm.sessHistory && Array.isArray(rm.sessHistory)){
-        if(!local.sessHistory) local.sessHistory = [];
-        var tsSet = {};
-        local.sessHistory.forEach(function(s){ tsSet[s.ts]=true; });
-        rm.sessHistory.forEach(function(s){ if(!tsSet[s.ts]){ local.sessHistory.push(s); } });
-        local.sessHistory.sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
-      }
-      localStorage.setItem(FB_KEY, JSON.stringify(local));
-    }
-    
-    // Merge refcheck
-    if(remote.refcheck){
-      var lrc = JSON.parse(localStorage.getItem(FB_KEY + '_refcheck') || '{}');
-      for(var k in remote.refcheck){ if(!lrc[k]) lrc[k] = remote.refcheck[k]; }
-      localStorage.setItem(FB_KEY + '_refcheck', JSON.stringify(lrc));
-    }
-    
-    // Merge highlight
-    if(remote.highlight){
-      var lhl = JSON.parse(localStorage.getItem(FB_KEY + '_hl') || '{}');
-      for(var k in remote.highlight){ if(!lhl[k]) lhl[k] = remote.highlight[k]; }
-      localStorage.setItem(FB_KEY + '_hl', JSON.stringify(lhl));
-    }
-    
-    // Reload app state from merged localStorage
-    loadStorage();
-    refCheckDB = JSON.parse(localStorage.getItem(FB_KEY + '_refcheck') || '{}');
-    updateCountBadge();
-    showSync('✅ 同期完了', '#66bb6a');
-    
-  }).catch(function(e){
-    showSync('❌ 読込エラー', '#ef5350');
-    console.error('Firebase download error:', e);
-  });
-  }catch(ex){console.warn('Firebase sync init error:',ex);}
-})();
-
-
 var refCheckDB=JSON.parse(localStorage.getItem('zaimu_riron_v6_refcheck')||'{}');
 updateCountBadge();
 
@@ -1855,6 +1683,51 @@ function hide(id){var el=gi(id);if(el)el.style.display='none';}
   }
 
   function hashStr(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return Math.abs(h);}
+})();
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+try{
+if(typeof firebase==='undefined') return;
+var FK='zaimu_riron_v6';
+if(!firebase.apps.length) firebase.initializeApp({apiKey:"AIzaSyByImWNSABE69MCpTHbqYZzz6LZRKwplD4",authDomain:"cpa-quiz-6d1f9.firebaseapp.com",projectId:"cpa-quiz-6d1f9",storageBucket:"cpa-quiz-6d1f9.firebasestorage.app",messagingSenderId:"534803312241",appId:"1:534803312241:web:00dde6df4cbbedf1da35d0"});
+var fs=firebase.firestore(),ref=fs.collection('users').doc('u5wnfjuskrmm1bl4z0');
+var _t=null,_s=false;
+var dot=document.createElement('div');
+dot.style.cssText='position:fixed;bottom:8px;right:8px;z-index:9999;font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(0,0,0,.6);color:#aaa;pointer-events:none;transition:opacity .3s';
+document.body.appendChild(dot);
+function show(m,c){dot.textContent=m;dot.style.color=c||'#aaa';dot.style.opacity='1';clearTimeout(dot._h);dot._h=setTimeout(function(){dot.style.opacity='0';},3000);}
+function upload(){
+if(_s)return;clearTimeout(_t);
+_t=setTimeout(function(){_s=true;show('⬆ 保存中...','#ffa726');
+var p={};p[FK]={main:JSON.parse(localStorage.getItem(FK)||'{}'),refcheck:JSON.parse(localStorage.getItem(FK+'_refcheck')||'{}'),highlight:JSON.parse(localStorage.getItem(FK+'_hl')||'{}'),_t:new Date().toISOString()};
+ref.set(p,{merge:true}).then(function(){_s=false;show('✅ 同期完了','#66bb6a');}).catch(function(e){_s=false;show('❌ 同期エラー','#ef5350');});
+},500);
+}
+var _orig=localStorage.setItem.bind(localStorage);
+localStorage.setItem=function(k,v){_orig(k,v);if(k.indexOf(FK)===0)upload();};
+show('⬇ 読込中...','#42a5f5');
+ref.get().then(function(doc){
+if(!doc.exists||!doc.data()[FK]){show('✅ ローカル使用','#66bb6a');upload();return;}
+var r=doc.data()[FK];
+if(r.main){var l=JSON.parse(localStorage.getItem(FK)||'{}'),m=r.main;
+if(m.db){if(!l.db)l.db={};for(var k in m.db){if(!l.db[k])l.db[k]=m.db[k];else{l.db[k].o=Math.max(l.db[k].o||0,m.db[k].o||0);l.db[k].x=Math.max(l.db[k].x||0,m.db[k].x||0);l.db[k].ts=Math.max(l.db[k].ts||0,m.db[k].ts||0);}}}
+['wrongDB','unknownDB','bookmarks','answeredDB'].forEach(function(f){if(m[f]){if(!l[f])l[f]={};for(var k in m[f]){if(!l[f][k])l[f][k]=m[f][k];}}});
+if(m.slowDB&&Array.isArray(m.slowDB)){if(!l.slowDB)l.slowDB=[];var ss={};l.slowDB.forEach(function(i){ss[i]=1;});m.slowDB.forEach(function(i){if(!ss[i])l.slowDB.push(i);});}
+if(m.srsDB){if(!l.srsDB)l.srsDB={};for(var k in m.srsDB){if(!l.srsDB[k])l.srsDB[k]=m.srsDB[k];else l.srsDB[k].lv=Math.max(l.srsDB[k].lv||0,m.srsDB[k].lv||0);}}
+if(m.memoMap){if(!l.memoMap)l.memoMap={};for(var k in m.memoMap){if(!l.memoMap[k])l.memoMap[k]=m.memoMap[k];else if((m.memoMap[k]||'').length>(l.memoMap[k]||'').length)l.memoMap[k]=m.memoMap[k];}}
+if(m.sessHistory&&Array.isArray(m.sessHistory)){if(!l.sessHistory)l.sessHistory=[];var ts={};l.sessHistory.forEach(function(s){ts[s.ts]=1;});m.sessHistory.forEach(function(s){if(!ts[s.ts])l.sessHistory.push(s);});l.sessHistory.sort(function(a,b){return(b.ts||0)-(a.ts||0);});}
+_orig(FK,JSON.stringify(l));}
+if(r.refcheck){var rc=JSON.parse(localStorage.getItem(FK+'_refcheck')||'{}');for(var k in r.refcheck)if(!rc[k])rc[k]=r.refcheck[k];_orig(FK+'_refcheck',JSON.stringify(rc));}
+if(r.highlight){var hl=JSON.parse(localStorage.getItem(FK+'_hl')||'{}');for(var k in r.highlight)if(!hl[k])hl[k]=r.highlight[k];_orig(FK+'_hl',JSON.stringify(hl));}
+if(typeof loadStorage==='function')loadStorage();
+if(typeof refCheckDB!=='undefined')refCheckDB=JSON.parse(localStorage.getItem(FK+'_refcheck')||'{}');
+if(typeof updateCountBadge==='function')updateCountBadge();
+show('✅ 同期完了','#66bb6a');
+}).catch(function(e){show('❌ 読込エラー','#ef5350');console.error(e);});
+}catch(ex){console.warn('Firebase:',ex);}
 })();
 </script>
 </body></html>
