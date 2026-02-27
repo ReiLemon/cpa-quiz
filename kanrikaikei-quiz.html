@@ -1733,13 +1733,21 @@ function downloadWrongPDF(){
   if(badQs.length===0){alert('不正解の問題がありません');return;}
   var circled='①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚';
   function fmtCh(ch){var m=ch.match(/第(\d+)章\s*(.*)/);if(m)return m[1]+'.'+m[2];var idx=circled.indexOf(ch.charAt(0));if(idx>=0)return(idx+1)+'.'+ch.substring(1).replace(/^\s+/,'');return ch;}
-  function getChNum(ch){var m=ch.match(/第(\d+)章/);return m?m[1]:'?';}
-  // 問題番号を章内通し番号で計算（問題X-Y形式）
-  var chCount={};var qNumMap={};
-  QUESTIONS.forEach(function(q){
-    chCount[q.chapter]=(chCount[q.chapter]||0)+1;
-    qNumMap[q.id]='問題'+getChNum(q.chapter)+'-'+chCount[q.chapter];
+  // PAGES lookup: q.section "X-Y" → PAGESキー（章内セクション番号Xで検索）
+  var secPageMap={};
+  Object.keys(PAGES).forEach(function(key){
+    var p=PAGES[key];if(!p.chapter)return;
+    var chM=p.chapter.match(/第(\d+)章/);if(!chM)return;
+    var secM=key.match(/^(\d+)/);if(!secM)return;
+    secPageMap[chM[1]+':'+secM[1]]=key;
   });
+  function lookupPage(q){
+    if(PAGES[q.section])return PAGES[q.section];
+    var chM=q.chapter.match(/第(\d+)章/);if(!chM)return null;
+    var secM=q.section.match(/^(\d+)/);if(!secM)return null;
+    var k=secPageMap[chM[1]+':'+secM[1]];
+    return k?PAGES[k]:null;
+  }
   var now=new Date();
   var dateStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate();
   var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>管理会計論 不正解一覧 - '+dateStr+'</title><style>body{font-family:"Hiragino Sans","Meiryo","Noto Sans JP",sans-serif;padding:20px;font-size:12px}h1{font-size:18px;color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:8px}table{border-collapse:collapse;width:100%;margin-top:12px}th{background:#1a237e;color:#fff;padding:8px 6px;font-size:11px;text-align:left}td{border:1px solid #ccc;padding:6px;font-size:11px;vertical-align:top}tr:nth-child(even){background:#f5f5f5}.cnt{text-align:center;font-weight:700}.date{text-align:center}@media print{body{padding:10px}}</style></head><body>';
@@ -1751,8 +1759,8 @@ function downloadWrongPDF(){
     var aDate=answeredDB[q.id]?new Date(answeredDB[q.id]):null;
     var aStr=aDate?(aDate.getFullYear()+'/'+(aDate.getMonth()+1)+'/'+aDate.getDate()):'—';
     var pg=q.page_marker||'—';
-    var sec=q.section;var pi=PAGES[sec];var pgStr=pi?(pi.vol+' '+pi.page):'—';
-    html+='<tr><td class="cnt">'+pg+'</td><td>'+fmtCh(q.chapter)+'</td><td>'+sec+'</td><td class="cnt" style="font-weight:700">'+(qNumMap[q.id]||'—')+'</td><td class="cnt" style="color:#c62828">'+wCnt+'</td><td class="cnt" style="color:#e65100">'+uCnt+'</td><td class="date">'+aStr+'</td><td>'+pgStr+'</td></tr>';
+    var pi=lookupPage(q);var pgStr=pi?(pi.vol+' '+pi.page):'—';
+    html+='<tr><td class="cnt">'+pg+'</td><td>'+fmtCh(q.chapter)+'</td><td>'+q.section+'</td><td class="cnt" style="font-weight:700">問題'+q.section+'</td><td class="cnt" style="color:#c62828">'+wCnt+'</td><td class="cnt" style="color:#e65100">'+uCnt+'</td><td class="date">'+aStr+'</td><td>'+pgStr+'</td></tr>';
   });
   html+='</tbody></table></body></html>';
   var w=window.open('','_blank');w.document.write(html);w.document.close();w.focus();setTimeout(function(){w.print();},500);
