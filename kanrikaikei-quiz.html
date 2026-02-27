@@ -365,28 +365,9 @@ mark.hl.hl-blue{background:#90caf9}
       </div>
     </div>
 
-    <div class="stbl" id="weak-tbl" style="display:none">
-      <div class="stbl-hd"><span>⚠️ 苦手セクション（正答率60%未満）</span></div>
-      <div id="weak-list"></div>
-    </div>
-    <div class="stbl" id="slow-tbl" style="display:none">
-      <div class="stbl-hd"><span>⏱ 時間がかかった問題 TOP10</span></div>
-      <div id="slow-list"></div>
-    </div>
-    <div class="stbl" id="wq-tbl" style="display:none">
-      <div class="stbl-hd">
-        <span>❌ 間違い・わからない 問題一覧</span>
-        <span id="wq-count" style="font-size:11px;opacity:.8"></span>
-        <button onclick="downloadWrongPDF()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:11px">📄 PDF出力</button>
-      </div>
-      <div id="wq-list" style="padding:12px"></div>
-    </div>
     <div class="stbl">
       <div class="stbl-hd">
         <span>📈 セクション別正答率</span>
-        <button onclick="exportData()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:11px">📤 エクスポート</button>
-        <button onclick="document.getElementById('import-file').click()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:11px">📥 インポート</button>
-        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
         <button onclick="resetData()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:11px">リセット</button>
       </div>
       <div id="sc-list"></div>
@@ -832,8 +813,11 @@ function renderSessionHistory(){
   gi('sh-count').textContent='全'+sessHistory.length+'回';
   var tabsEl=gi('sh-tabs');
   tabsEl.innerHTML='';
+  var shown=0;
   sessHistory.forEach(function(s,i){
     var rt=s.tot>0?Math.round(s.ok/s.tot*100):0;
+    if(rt<=38) return;
+    shown++;
     var cl=rt>=70?'hi':rt>=50?'mi':'lo';
     var btn=document.createElement('div');
     btn.className='sh-tab'+(i===activeSessionIdx?' active':'');
@@ -842,6 +826,7 @@ function renderSessionHistory(){
     (function(idx){btn.onclick=function(){activeSessionIdx=idx;renderSessionHistory();};})(i);
     tabsEl.appendChild(btn);
   });
+  if(shown===0){tbl.style.display='none';return;}
   renderSessionDetail(sessHistory[activeSessionIdx]);
 }
 function renderSessionDetail(s){
@@ -897,66 +882,8 @@ function renderAn(){
 
   renderSessionHistory();
 
-  // slow
-  var stbl=gi('slow-tbl');
-  if(slowDB.length>0){
-    stbl.style.display='block';
-    gi('slow-list').innerHTML=slowDB.slice(0,10).map(function(s){
-      var pstr=(s.ref&&s.ref.display)?'<span style="color:#d84315;font-weight:600">📖'+s.ref.display+'</span> ':'';
-      return '<div class="srow"><div style="font-size:11px;color:#888;margin-bottom:3px">'+s.chapter+' / '+s.section+' '+pstr+'<span style="color:#e65100;font-weight:700">⏱'+s.time+'秒</span></div>'
-        +'<div style="font-size:13px;line-height:1.5;margin-bottom:3px">'+s.q.substring(0,70)+'…</div>'
-        +'<div style="font-size:11px;color:#888">正解: '+s.answer+'</div></div>';
-    }).join('');
-  } else stbl.style.display='none';
-
-  // weak sections
-  var rows=keys.map(function(k){var r=db[k];return{ch:r.ch,sc:r.sc,ok:r.ok,tot:r.tot,rt:Math.round(r.ok/r.tot*100)};});
-  var weak=rows.filter(function(r){return r.rt<60&&r.tot>=3;}).sort(function(a,b){return a.rt-b.rt;});
-  var wtbl=gi('weak-tbl');
-  if(weak.length>0){
-    wtbl.style.display='block';
-    gi('weak-list').innerHTML=weak.slice(0,8).map(function(r){
-      return '<div class="weak-row"><div>'
-        +'<div style="font-size:13px;font-weight:600">'+r.ch+' / '+r.sc+'</div>'
-        +''
-        +'<div style="font-size:10px;color:#888">'+r.tot+'問回答</div></div>'
-        +'<div style="font-size:14px;font-weight:700;color:#e65100">'+r.rt+'%</div></div>';
-    }).join('');
-  } else wtbl.style.display='none';
-
-  // wrong/unknown list
-  var wtblQ=gi('wq-tbl');
-  var badQs=QUESTIONS.filter(function(q){return allBadIds.indexOf(q.id)>=0;})
-    .sort(function(a,b){return ((wrongDB[b.id]||0)+(unknownDB[b.id]||0))-((wrongDB[a.id]||0)+(unknownDB[a.id]||0));})
-    .slice(0,20);
-  if(badQs.length>0){
-    wtblQ.style.display='block';
-    gi('wq-count').textContent='（上位'+badQs.length+'問）';
-    gi('wq-list').innerHTML=badQs.map(function(q){
-      var isUk=unknownDB[q.id];
-      var cls=isUk?'uk-card':'ng-card';
-      var icon=isUk?'？':'❌';
-      var cnt=(wrongDB[q.id]||0)+(unknownDB[q.id]||0);
-      var srsE=srsDB[q.id]; var srsStr='';
-      if(srsE&&srsE.level===5) srsStr='<span style="color:#2e7d32;font-weight:700;font-size:11px">✨マスター</span>';
-      else if(srsE) srsStr='<span style="color:#e65100;font-size:11px">連続正解 '+(srsE.streak||0)+'/3</span>';
-      var memo=memoMap[q.id];
-      return '<div class="wq-card '+cls+'">'
-        +'<div class="wq-meta"><span class="tag tag-ch">'+q.chapter+'</span>'
-        +'<span class="tag tag-sc">'+(QNUM[q.id]?'問題'+QNUM[q.id]:q.section)+'</span>'
-        +'<span class="tag-lv '+q.level+'" style="padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700">'+q.level+'論点</span>'
-        +''
-        +'<span style="color:'+(isUk?'#e65100':'#c62828')+';font-weight:700;font-size:11px">'+icon+' '+cnt+'回</span>'
-        +srsStr+'</div>'
-        +'<div style="font-size:13px;line-height:1.8;margin-bottom:8px;word-break:break-all">'+q.question+'</div>'
-        +'<div class="wq-ans">正解: '+q.answer+'</div>'
-        +'<div class="wq-expl">'+(q.explanation||'解説なし')+'</div>'
-        +(memo?'<div class="memo-disp">📝 自分のメモ: '+memo+'</div>':'')
-        +'</div>';
-    }).join('');
-  } else wtblQ.style.display='none';
-
   // section stats
+  var rows=keys.map(function(k){var r=db[k];return{ch:r.ch,sc:r.sc,ok:r.ok,tot:r.tot,rt:Math.round(r.ok/r.tot*100)};});
   rows.sort(function(a,b){return a.ch.localeCompare(b.ch)||a.sc.localeCompare(b.sc);});
   gi('sc-list').innerHTML=rows.map(function(r){
     var cl=r.rt>=70?'hi':r.rt>=50?'mi':'lo';
@@ -1572,15 +1499,15 @@ function genMyTextbook(){
     +'body{font-family:"Hiragino Kaku Gothic ProN","Meiryo",sans-serif;background:#f5f5f5;color:#222;font-size:11px;line-height:1.4}'
     +'.wrap{max-width:700px;margin:0 auto;padding:8px}'
     +'.title-bar{text-align:center;padding:16px 0 12px;margin-bottom:8px}'
-    +'.title-bar h1{font-size:16px;color:#1a237e;margin-bottom:4px}'
+    +'.title-bar h1{font-size:16px;color:#e65100;margin-bottom:4px}'
     +'.title-bar .meta{font-size:10px;color:#888}'
-    +'.ch{background:linear-gradient(135deg,#1a237e,#283593);color:#fff;padding:10px 14px;border-radius:8px;margin-bottom:6px}'
+    +'.ch{background:linear-gradient(135deg,#e65100,#ff9800);color:#fff;padding:10px 14px;border-radius:8px;margin-bottom:6px}'
     +'.ch-t{font-size:15px;font-weight:800}'
-    +'.ch-p{font-size:10px;color:#bbdefb;margin-top:1px}'
+    +'.ch-p{font-size:10px;color:#ffe0b2;margin-top:1px}'
     +'.sec{background:#fff;border-radius:6px;margin-bottom:5px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.06)}'
-    +'.sec-h{background:#e8eaf6;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #c5cae9}'
-    +'.sec-t{font-size:12px;font-weight:700;color:#1a237e}'
-    +'.sec-pg{font-size:9px;color:#5c6bc0}'
+    +'.sec-h{background:#fff3e0;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ffe0b2}'
+    +'.sec-t{font-size:12px;font-weight:700;color:#e65100}'
+    +'.sec-pg{font-size:9px;color:#ff9800}'
     +'.hdr{display:grid;grid-template-columns:56px 24px 1fr 36px 36px;padding:3px 10px;gap:5px;font-size:8px;color:#999;font-weight:600;border-bottom:1px solid #e0e0e0;background:#fafafa}'
     +'.row{display:grid;grid-template-columns:56px 24px 1fr 36px 36px;align-items:start;padding:4px 10px;border-bottom:1px solid #f5f5f5;gap:5px}'
     +'.row:last-child{border-bottom:none}'
@@ -1598,11 +1525,9 @@ function genMyTextbook(){
     +'<div class="title-bar"><h1>管理会計論 不正解問題一覧</h1>'
     +'<div class="meta">'+ds+' ／ 不正解 '+totalBad+'問 ／ マスター '+countMastered()+'問</div></div>'
     +body
-    +'<div class="np"><button onclick="window.print()" style="background:#1a237e;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">印刷 / PDFとして保存</button>'
-    +'<p style="margin-top:6px;font-size:10px;color:#888">印刷ダイアログで「PDFとして保存」を選択</p></div>'
     +'</div></body></html>';
   var w=window.open('','_blank');
-  if(w){w.document.write(doc);w.document.close();}
+  if(w){w.document.write(doc);w.document.close();setTimeout(function(){w.print();},600);}
   else alert('ポップアップを許可してください。');
 }
 
