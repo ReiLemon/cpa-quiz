@@ -1,0 +1,2292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPA Active Recall Study</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpolygon points='16,2 30,28 2,28' fill='%234a9bd9'/%3E%3Ctext x='16' y='24' text-anchor='middle' font-size='14' font-weight='bold' fill='white' font-family='Arial'%3EA%3C/text%3E%3C/svg%3E" />
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <style>
+    :root { --bg:#f0f7ff; --card:#ffffff; --card2:#f0f4f8; --accent:#4a9bd9; --accent2:#2b7bb9; --green:#38a169; --red:#e53e3e; --orange:#dd6b20; --text:#2d3748; --text2:#718096; --border:#cee0f2; --accent-light:#e8f4fd; --accent-shadow:rgba(74,155,217,.12); --sky:#4a9bd9; --sky-light:#e8f4fd; --sky-border:#b3d4f0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Hiragino Kaku Gothic ProN','Noto Sans JP','Segoe UI',sans-serif; background: var(--bg); color: var(--text); }
+    .top-bg { position:fixed; inset:0; z-index:0; background: linear-gradient(135deg, #1e8cd6 0%, #3da5e8 30%, #5cbcf0 55%, #8ad4f8 80%, #b0e4ff 100%); }
+    .top-bg::after { content:''; position:absolute; inset:0; background: radial-gradient(ellipse at 70% 40%, rgba(255,255,255,.15) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, rgba(255,255,255,.1) 0%, transparent 50%); }
+    .top-content { position:relative; z-index:1; }
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .top-bar { display: flex; align-items: center; gap: 6px; padding: 6px 0; }
+    .top-bar .toggle-btn { padding: 4px 10px; background: var(--card); border: 1.5px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 700; color: var(--text2); transition: all .15s; white-space: nowrap; }
+    .top-bar .toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .ch-bar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 6px 0; animation: fadeIn .2s ease; }
+    .ch-card { background: var(--card); border-radius: 6px; padding: 5px 10px; box-shadow: 0 1px 3px rgba(0,0,0,.06); cursor: pointer; transition: all .15s; border: 1.5px solid var(--border); font-size: 12px; }
+    .ch-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1); border-color: var(--accent); }
+    .ch-card.selected { border-color: var(--accent); background: var(--accent-light); }
+    .ch-card.expanded { border-color: var(--accent); background: var(--accent-light); }
+    .ch-name { font-size: 12px; font-weight: 700; display: flex; gap: 5px; align-items: center; white-space: nowrap; }
+    .ch-count { font-size: 10px; color: var(--text2); font-weight: 400; }
+    .ch-expand { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: var(--card); border: 2px solid var(--accent); border-radius: 12px; padding: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.2); z-index: 50; max-width: 500px; width: 90%; }
+    .ch-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.3); z-index: 40; }
+    .q-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+    .q-pill { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all .12s; border: 1px solid var(--border); background: var(--card); color: #4a5568; }
+    .q-pill:hover { background: var(--accent-light); border-color: var(--accent); }
+    .q-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .q-pill.mastered { background: #f0fff4; color: #276749; border-color: #9ae6b4; opacity: .6; }
+    .main-layout { display: flex; gap: 10px; height: calc(100vh - 52px); transition: height .2s; }
+    .main-layout.bar-open { height: calc(100vh - 92px); }
+    .pdf-panel { flex: 5; min-width: 0; background: var(--card); border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+    .pdf-panel img { max-width: 100%; object-fit: contain; }
+    .ctrl-panel { flex: 3; min-width: 180px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+    .memo-box { background: var(--card); border-radius: 10px; padding: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.06); border: 1px solid var(--border); }
+    .memo-label { font-size: 11px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+    .memo-input { width: 100%; padding: 7px 10px; background: var(--card2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; line-height: 1.7; outline: none; box-sizing: border-box; color: var(--text); }
+    .memo-input:focus { border-color: var(--accent); }
+    .rate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .rate-btn { padding: 10px 0; color: #fff; font-weight: 700; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; transition: filter .15s; }
+    .rate-btn:hover { filter: brightness(.9); }
+    @media(max-width:500px) {
+      .main-layout, .main-layout.bar-open { flex-direction: column; height: auto; }
+      .pdf-panel { max-height: 50vh; }
+      .ctrl-panel { max-width: 100%; min-width: 0; }
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ZAIMU_KEISAN data embedded
+    const ZAIMU_KEISAN = [{"chapter": "第1章 現金預金", "q": "問題1-1", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_1-1.webp"]}, {"chapter": "第1章 現金預金", "q": "問題1-2", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_1-2_p1.webp", "active-recall-images/zaimu_1-2_p2.webp"]}, {"chapter": "第1章 現金預金", "q": "問題1-3", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_1-3_p1.webp", "active-recall-images/zaimu_1-3_p2.webp"]}, {"chapter": "第1章 現金預金", "q": "問題1-4", "imp": "A", "diff": "B", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_1-4_p1.webp", "active-recall-images/zaimu_1-4_p2.webp"]}, {"chapter": "第1章 現金預金", "q": "問題1-5", "imp": "B", "diff": "C", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_1-5.webp"]}, {"chapter": "第2章 有形固定資産", "q": "問題2-1", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_2-1.webp"]}, {"chapter": "第2章 有形固定資産", "q": "問題2-2", "imp": "A", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_2-2_p1.webp", "active-recall-images/zaimu_2-2_p2.webp"]}, {"chapter": "第2章 有形固定資産", "q": "問題2-3", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_2-3_p1.webp", "active-recall-images/zaimu_2-3_p2.webp"]}, {"chapter": "第2章 有形固定資産", "q": "問題2-4", "imp": "A", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_2-4_p1.webp", "active-recall-images/zaimu_2-4_p2.webp"]}, {"chapter": "第2章 有形固定資産", "q": "問題2-5", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_2-5_p1.webp", "active-recall-images/zaimu_2-5_p2.webp"]}, {"chapter": "第2章 有形固定資産", "q": "問題2-6", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_2-6_p1.webp", "active-recall-images/zaimu_2-6_p2.webp"]}, {"chapter": "第2章 有形固定資産", "q": "問題2-8", "imp": "A", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_2-8.webp"]}, {"chapter": "第3章 無形固定資産", "q": "問題3-1", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_3-1.webp"]}, {"chapter": "第3章 無形固定資産", "q": "問題3-2", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_3-2.webp"]}, {"chapter": "第4章 引当金", "q": "問題4-1", "imp": "B", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_4-1.webp"]}, {"chapter": "第5章 商品売買・棚卸資産", "q": "問題5-1", "imp": "B", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_5-1.webp"]}, {"chapter": "第5章 商品売買・棚卸資産", "q": "問題5-2", "imp": "A", "diff": "B", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_5-2_p1.webp", "active-recall-images/zaimu_5-2_p2.webp"]}, {"chapter": "第5章 商品売買・棚卸資産", "q": "問題5-3", "imp": "A", "diff": "B", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_5-3_p1.webp", "active-recall-images/zaimu_5-3_p2.webp"]}, {"chapter": "第5章 商品売買・棚卸資産", "q": "問題5-4", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_5-4_p1.webp", "active-recall-images/zaimu_5-4_p2.webp"]}, {"chapter": "第5章 商品売買・棚卸資産", "q": "問題5-5", "imp": "A", "diff": "B", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_5-5_p1.webp", "active-recall-images/zaimu_5-5_p2.webp"]}, {"chapter": "第5章 商品売買・棚卸資産", "q": "問題5-6", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_5-6.webp"]}, {"chapter": "第5章 商品売買・棚卸資産", "q": "問題5-7", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_5-7.webp"]}, {"chapter": "第5章 商品売買・棚卸資産", "q": "問題5-8", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_5-8_p1.webp", "active-recall-images/zaimu_5-8_p2.webp"]}, {"chapter": "第6章 本支店会計", "q": "問題6-1", "imp": "B", "diff": "B", "freq": "─低め", "imgs": ["active-recall-images/zaimu_6-1.webp"]}, {"chapter": "第6章 本支店会計", "q": "問題6-2", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_6-2_p1.webp", "active-recall-images/zaimu_6-2_p2.webp"]}, {"chapter": "第6章 本支店会計", "q": "問題6-3", "imp": "B", "diff": "B", "freq": "─低め", "imgs": ["active-recall-images/zaimu_6-3.webp"]}, {"chapter": "第6章 本支店会計", "q": "問題6-4", "imp": "B", "diff": "C", "freq": "─低め", "imgs": ["active-recall-images/zaimu_6-4.webp"]}, {"chapter": "第6章 本支店会計", "q": "問題6-5", "imp": "B", "diff": "B", "freq": "─低め", "imgs": ["active-recall-images/zaimu_6-5_p1.webp", "active-recall-images/zaimu_6-5_p2.webp"]}, {"chapter": "第7章 1株当たり情報", "q": "問題7-1", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_7-1.webp"]}, {"chapter": "第7章 1株当たり情報", "q": "問題7-2", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_7-2_p1.webp", "active-recall-images/zaimu_7-2_p2.webp"]}, {"chapter": "第7章 1株当たり情報", "q": "問題7-3", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_7-3.webp"]}, {"chapter": "第7章 1株当たり情報", "q": "問題7-4", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_7-4.webp"]}, {"chapter": "第8章 有価証券", "q": "問題8-1", "imp": "B", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_8-1.webp"]}, {"chapter": "第8章 有価証券", "q": "問題8-2", "imp": "B", "diff": "B", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_8-2_p1.webp", "active-recall-images/zaimu_8-2_p2.webp"]}, {"chapter": "第8章 有価証券", "q": "問題8-3", "imp": "B", "diff": "B", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_8-3.webp"]}, {"chapter": "第8章 有価証券", "q": "問題8-4", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_8-4_p1.webp", "active-recall-images/zaimu_8-4_p2.webp"]}, {"chapter": "第8章 有価証券", "q": "問題8-5", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_8-5.webp"]}, {"chapter": "第9章 債権債務", "q": "問題9-1", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_9-1.webp"]}, {"chapter": "第10章 貸倒引当金", "q": "問題10-1", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_10-1.webp"]}, {"chapter": "第10章 貸倒引当金", "q": "問題10-2", "imp": "B", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_10-2.webp"]}, {"chapter": "第10章 貸倒引当金", "q": "問題10-3", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_10-3_p1.webp", "active-recall-images/zaimu_10-3_p2.webp"]}, {"chapter": "第10章 貸倒引当金", "q": "問題10-4", "imp": "A", "diff": "C", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_10-4.webp"]}, {"chapter": "第11章 デリバティブ", "q": "問題11-1", "imp": "B", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_11-1.webp"]}, {"chapter": "第11章 デリバティブ", "q": "問題11-2", "imp": "B", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_11-2_p1.webp", "active-recall-images/zaimu_11-2_p2.webp"]}, {"chapter": "第12章 リース会計", "q": "問題12-1", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_12-1.webp"]}, {"chapter": "第12章 リース会計", "q": "問題12-2", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_12-2_p1.webp", "active-recall-images/zaimu_12-2_p2.webp"]}, {"chapter": "第12章 リース会計", "q": "問題12-3", "imp": "A", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_12-3.webp"]}, {"chapter": "第12章 リース会計", "q": "問題12-4", "imp": "B", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_12-4_p1.webp", "active-recall-images/zaimu_12-4_p2.webp"]}, {"chapter": "第12章 リース会計", "q": "問題12-5", "imp": "B", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_12-5_p1.webp", "active-recall-images/zaimu_12-5_p2.webp"]}, {"chapter": "第12章 リース会計", "q": "問題12-6", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_12-6_p1.webp", "active-recall-images/zaimu_12-6_p2.webp"]}, {"chapter": "第12章 リース会計", "q": "問題12-7", "imp": "A", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_12-7.webp"]}, {"chapter": "第12章 リース会計", "q": "問題12-8", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_12-8.webp"]}, {"chapter": "第12章 リース会計", "q": "問題12-9", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_12-9_p1.webp", "active-recall-images/zaimu_12-9_p2.webp"]}, {"chapter": "第12章 リース会計", "q": "問題12-10", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_12-10.webp"]}, {"chapter": "第12章 リース会計", "q": "問題12-11", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_12-11.webp"]}, {"chapter": "第13章 研究開発費", "q": "問題13-1", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_13-1.webp"]}, {"chapter": "第13章 研究開発費", "q": "問題13-2", "imp": "A", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_13-2.webp"]}, {"chapter": "第13章 研究開発費", "q": "問題13-3", "imp": "A", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_13-3_p1.webp", "active-recall-images/zaimu_13-3_p2.webp"]}, {"chapter": "第13章 研究開発費", "q": "問題13-4", "imp": "A", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_13-4.webp"]}, {"chapter": "第13章 研究開発費", "q": "問題13-5", "imp": "A", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_13-5.webp"]}, {"chapter": "第14章 減損会計", "q": "問題14-1", "imp": "B", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_14-1.webp"]}, {"chapter": "第14章 減損会計", "q": "問題14-2", "imp": "B", "diff": "C", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_14-2.webp"]}, {"chapter": "第14章 減損会計", "q": "問題14-3", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_14-3.webp"]}, {"chapter": "第14章 減損会計", "q": "問題14-4", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_14-4_p1.webp", "active-recall-images/zaimu_14-4_p2.webp"]}, {"chapter": "第14章 減損会計", "q": "問題14-5", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_14-5.webp"]}, {"chapter": "第14章 減損会計", "q": "問題14-6", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_14-6_p1.webp", "active-recall-images/zaimu_14-6_p2.webp"]}, {"chapter": "第14章 減損会計", "q": "問題14-7", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_14-7_p1.webp", "active-recall-images/zaimu_14-7_p2.webp"]}, {"chapter": "第14章 減損会計", "q": "問題14-8", "imp": "B", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_14-8_p1.webp", "active-recall-images/zaimu_14-8_p2.webp"]}, {"chapter": "第14章 減損会計", "q": "問題14-9", "imp": "B", "diff": "C", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_14-9.webp"]}, {"chapter": "第14章 減損会計", "q": "問題14-10", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_14-10.webp"]}, {"chapter": "第14章 減損会計", "q": "問題14-11", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_14-11.webp"]}, {"chapter": "第15章 税効果会計", "q": "問題15-1", "imp": "A", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_15-1.webp"]}, {"chapter": "第15章 税効果会計", "q": "問題15-2", "imp": "B", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_15-2.webp"]}, {"chapter": "第15章 税効果会計", "q": "問題15-3", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": []}, {"chapter": "第16章 外貨建取引", "q": "問題16-1", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_16-1.webp"]}, {"chapter": "第16章 外貨建取引", "q": "問題16-2", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_16-2_p1.webp", "active-recall-images/zaimu_16-2_p2.webp"]}, {"chapter": "第16章 外貨建取引", "q": "問題16-3", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_16-3_p1.webp", "active-recall-images/zaimu_16-3_p2.webp"]}, {"chapter": "第16章 外貨建取引", "q": "問題16-4", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_16-4.webp"]}, {"chapter": "第16章 外貨建取引", "q": "問題16-5", "imp": "B", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_16-5_p1.webp", "active-recall-images/zaimu_16-5_p2.webp"]}, {"chapter": "第16章 外貨建取引", "q": "問題16-7", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_16-7.webp"]}, {"chapter": "第16章 外貨建取引", "q": "問題16-8", "imp": "B", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_16-8_p1.webp", "active-recall-images/zaimu_16-8_p2.webp"]}, {"chapter": "第16章 外貨建取引", "q": "問題16-9", "imp": "B", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_16-9_p1.webp", "active-recall-images/zaimu_16-9_p2.webp"]}, {"chapter": "第17章 社債", "q": "問題17-1", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_17-1.webp"]}, {"chapter": "第17章 社債", "q": "問題17-2", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_17-2.webp"]}, {"chapter": "第17章 社債", "q": "問題17-3", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_17-3.webp"]}, {"chapter": "第17章 社債", "q": "問題17-4", "imp": "B", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_17-4.webp"]}, {"chapter": "第17章 社債", "q": "問題17-5", "imp": "B", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_17-5.webp"]}, {"chapter": "第17章 社債", "q": "問題17-6", "imp": "B", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_17-6.webp"]}, {"chapter": "第17章 社債", "q": "問題17-7", "imp": "B", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_17-7.webp"]}, {"chapter": "第18章 退職給付", "q": "問題18-1", "imp": "B", "diff": "C", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_18-1.webp"]}, {"chapter": "第18章 退職給付", "q": "問題18-2", "imp": "B", "diff": "C", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_18-2.webp"]}, {"chapter": "第18章 退職給付", "q": "問題18-3", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_18-3.webp"]}, {"chapter": "第18章 退職給付", "q": "問題18-4", "imp": "A", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_18-4.webp"]}, {"chapter": "第18章 退職給付", "q": "問題18-5", "imp": "A", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_18-5.webp"]}, {"chapter": "第18章 退職給付", "q": "問題18-6", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_18-6_p1.webp", "active-recall-images/zaimu_18-6_p2.webp"]}, {"chapter": "第18章 退職給付", "q": "問題18-7", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_18-7.webp"]}, {"chapter": "第18章 退職給付", "q": "問題18-8", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_18-8.webp"]}, {"chapter": "第18章 退職給付", "q": "問題18-9", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_18-9.webp"]}, {"chapter": "第19章 資産除去債務", "q": "問題19-1", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_19-1.webp"]}, {"chapter": "第19章 資産除去債務", "q": "問題19-2", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_19-2.webp"]}, {"chapter": "第19章 資産除去債務", "q": "問題19-3", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_19-3_p1.webp", "active-recall-images/zaimu_19-3_p2.webp"]}, {"chapter": "第19章 資産除去債務", "q": "問題19-4", "imp": "B", "diff": "B", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_19-4.webp"]}, {"chapter": "第19章 資産除去債務", "q": "問題19-5", "imp": "B", "diff": "B", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_19-5.webp"]}, {"chapter": "第20章 純資産", "q": "問題20-1", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_20-1.webp"]}, {"chapter": "第20章 純資産", "q": "問題20-2", "imp": "B", "diff": "B", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_20-2.webp"]}, {"chapter": "第20章 純資産", "q": "問題20-3", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_20-3_p1.webp", "active-recall-images/zaimu_20-3_p2.webp"]}, {"chapter": "第20章 純資産", "q": "問題20-4", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_20-4_p1.webp", "active-recall-images/zaimu_20-4_p2.webp"]}, {"chapter": "第20章 純資産", "q": "問題20-5", "imp": "B", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_20-5_p1.webp", "active-recall-images/zaimu_20-5_p2.webp"]}, {"chapter": "第20章 純資産", "q": "問題20-6", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_20-6.webp"]}, {"chapter": "第20章 純資産", "q": "問題20-7", "imp": "A", "diff": "B", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_20-7_p1.webp", "active-recall-images/zaimu_20-7_p2.webp"]}, {"chapter": "第21章 分配可能額", "q": "問題21-1", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_21-1.webp"]}, {"chapter": "第21章 分配可能額", "q": "問題21-2", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_21-2.webp"]}, {"chapter": "第21章 分配可能額", "q": "問題21-3", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_21-3.webp"]}, {"chapter": "第22章 ストックオプション", "q": "問題22-3", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_22-3.webp"]}, {"chapter": "第22章 ストックオプション", "q": "問題22-4", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_22-4_p1.webp", "active-recall-images/zaimu_22-4_p2.webp"]}, {"chapter": "第22章 ストックオプション", "q": "問題22-5", "imp": "A", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_22-5_p1.webp", "active-recall-images/zaimu_22-5_p2.webp"]}, {"chapter": "第23章 会計上の変更", "q": "問題23-1", "imp": "B", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_23-1.webp"]}, {"chapter": "第23章 会計上の変更", "q": "問題23-2", "imp": "B", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_23-2.webp"]}, {"chapter": "第24章 中間財務諸表", "q": "問題24-1", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_24-1.webp"]}, {"chapter": "第24章 中間財務諸表", "q": "問題24-2", "imp": "B", "diff": "A", "freq": "─低め", "imgs": ["active-recall-images/zaimu_24-2.webp"]}, {"chapter": "第25章 収益認識", "q": "問題25-1", "imp": "B", "diff": "A", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_25-1.webp"]}, {"chapter": "第25章 収益認識", "q": "問題25-2", "imp": "B", "diff": "A", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_25-2.webp"]}, {"chapter": "第25章 収益認識", "q": "問題25-3", "imp": "B", "diff": "A", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_25-3.webp"]}, {"chapter": "第25章 収益認識", "q": "問題25-4", "imp": "B", "diff": "A", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_25-4.webp"]}, {"chapter": "第25章 収益認識", "q": "問題25-5", "imp": "B", "diff": "A", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_25-5.webp"]}, {"chapter": "第25章 収益認識", "q": "問題25-6", "imp": "B", "diff": "B", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_25-6.webp"]}, {"chapter": "第25章 収益認識", "q": "問題25-7", "imp": "B", "diff": "A", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_25-7.webp"]}, {"chapter": "第25章 収益認識", "q": "問題25-8", "imp": "B", "diff": "B", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_25-8.webp"]}, {"chapter": "第25章 収益認識", "q": "問題25-9", "imp": "B", "diff": "A", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_25-9_p1.webp", "active-recall-images/zaimu_25-9_p2.webp"]}, {"chapter": "第25章 収益認識", "q": "問題25-10", "imp": "B", "diff": "B", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_25-10.webp"]}, {"chapter": "第25章 収益認識", "q": "問題25-11", "imp": "B", "diff": "A", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_25-11.webp"]}, {"chapter": "第25章 収益認識", "q": "問題25-12", "imp": "B", "diff": "A", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_25-12.webp"]}, {"chapter": "第26章 連結会計", "q": "問題26-4", "imp": "B", "diff": "B", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_26-4.webp"]}, {"chapter": "第27章 包括利益", "q": "問題27-1", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_27-1.webp"]}, {"chapter": "第27章 包括利益", "q": "問題27-2", "imp": "A", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_27-2.webp"]}, {"chapter": "第27章 包括利益", "q": "問題27-3", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_27-3_p1.webp", "active-recall-images/zaimu_27-3_p2.webp"]}, {"chapter": "第27章 包括利益", "q": "問題27-4", "imp": "A", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_27-4_p1.webp", "active-recall-images/zaimu_27-4_p2.webp"]}, {"chapter": "第27章 包括利益", "q": "問題27-5", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_27-5.webp"]}, {"chapter": "第27章 包括利益", "q": "問題27-6", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_27-6.webp"]}, {"chapter": "第28章 退職給付会計", "q": "問題28-1", "imp": "A", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_28-1.webp"]}, {"chapter": "第28章 退職給付会計", "q": "問題28-2", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_28-2.webp"]}, {"chapter": "第28章 退職給付会計", "q": "問題28-3", "imp": "A", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_28-3.webp"]}, {"chapter": "第28章 退職給付会計", "q": "問題28-4", "imp": "A", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_28-4_p1.webp", "active-recall-images/zaimu_28-4_p2.webp"]}, {"chapter": "第28章 退職給付会計", "q": "問題28-5", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_28-5_p1.webp", "active-recall-images/zaimu_28-5_p2.webp"]}, {"chapter": "第29章 在外支店", "q": "問題29-1", "imp": "B", "diff": "B", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_29-1.webp"]}, {"chapter": "第30章 在外子会社", "q": "問題30-1", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_30-1.webp"]}, {"chapter": "第30章 在外子会社", "q": "問題30-2", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_30-2.webp"]}, {"chapter": "第30章 在外子会社", "q": "問題30-4", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_30-4.webp"]}, {"chapter": "第31章 個別CF", "q": "問題31-1", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": []}, {"chapter": "第31章 個別CF", "q": "問題31-2", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_31-2_p1.webp", "active-recall-images/zaimu_31-2_p2.webp"]}, {"chapter": "第31章 個別CF", "q": "問題31-3", "imp": "B", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_31-3_p1.webp", "active-recall-images/zaimu_31-3_p2.webp"]}, {"chapter": "第31章 個別CF", "q": "問題31-4", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_31-4_p1.webp", "active-recall-images/zaimu_31-4_p2.webp"]}, {"chapter": "第31章 個別CF", "q": "問題31-5", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_31-5_p1.webp", "active-recall-images/zaimu_31-5_p2.webp"]}, {"chapter": "第31章 個別CF", "q": "問題31-6", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_31-6.webp"]}, {"chapter": "第32章 企業結合", "q": "問題32-1", "imp": "A", "diff": "B", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_32-1.webp"]}, {"chapter": "第32章 企業結合", "q": "問題32-2", "imp": "B", "diff": "B", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_32-2_p1.webp", "active-recall-images/zaimu_32-2_p2.webp"]}, {"chapter": "第32章 企業結合", "q": "問題32-3", "imp": "B", "diff": "B", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_32-3.webp"]}, {"chapter": "第32章 企業結合", "q": "問題32-4", "imp": "A", "diff": "A", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_32-4_p1.webp", "active-recall-images/zaimu_32-4_p2.webp"]}, {"chapter": "第32章 企業結合", "q": "問題32-5", "imp": "A", "diff": "A", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_32-5.webp"]}, {"chapter": "第32章 企業結合", "q": "問題32-6", "imp": "B", "diff": "A", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_32-6.webp"]}, {"chapter": "第32章 企業結合", "q": "問題32-7", "imp": "B", "diff": "C", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_32-7_p1.webp", "active-recall-images/zaimu_32-7_p2.webp"]}, {"chapter": "第32章 企業結合", "q": "問題32-8", "imp": "B", "diff": "B", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_32-8.webp"]}, {"chapter": "第32章 企業結合", "q": "問題32-10", "imp": "A", "diff": "B", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_32-10.webp"]}, {"chapter": "第32章 企業結合", "q": "問題32-11", "imp": "B", "diff": "A", "freq": "◎最頻出", "imgs": ["active-recall-images/zaimu_32-11_p1.webp", "active-recall-images/zaimu_32-11_p2.webp"]}, {"chapter": "第33章 事業分離", "q": "問題33-1", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_33-1.webp"]}, {"chapter": "第33章 事業分離", "q": "問題33-2", "imp": "B", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_33-2_p1.webp", "active-recall-images/zaimu_33-2_p2.webp"]}, {"chapter": "第33章 事業分離", "q": "問題33-3", "imp": "A", "diff": "A", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_33-3.webp"]}, {"chapter": "第33章 事業分離", "q": "問題33-4", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_33-4_p1.webp", "active-recall-images/zaimu_33-4_p2.webp"]}, {"chapter": "第33章 事業分離", "q": "問題33-5", "imp": "B", "diff": "B", "freq": "○頻出", "imgs": ["active-recall-images/zaimu_33-5.webp"]}, {"chapter": "第34章 決算整理", "q": "問題34-1", "imp": "A", "diff": "A", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_34-1_p1.webp", "active-recall-images/zaimu_34-1_p2.webp"]}, {"chapter": "第34章 決算整理", "q": "問題34-2", "imp": "A", "diff": "B", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_34-2_p1.webp", "active-recall-images/zaimu_34-2_p2.webp"]}, {"chapter": "第34章 決算整理", "q": "問題34-3", "imp": "A", "diff": "B", "freq": "△可能性あり", "imgs": ["active-recall-images/zaimu_34-3.webp"]}];
+
+    // KANRI_KEISAN data embedded (190 problems)
+    const KANRI_KEISAN = [{"chapter": "第1章 費目別計算", "q": "問題1-1", "imp": "A", "diff": "A", "topic": "材料費（材料副費）", "imgs": ["active-recall-images/kanri_1-1.webp"]}, {"chapter": "第1章 費目別計算", "q": "問題1-2", "imp": "A", "diff": "A", "topic": "材料費（材料副費）", "imgs": ["active-recall-images/kanri_1-2.webp"]}, {"chapter": "第1章 費目別計算", "q": "問題1-3", "imp": "A", "diff": "B", "topic": "材料費（材料副費）", "imgs": ["active-recall-images/kanri_1-3.webp"]}, {"chapter": "第1章 費目別計算", "q": "問題1-4", "imp": "A", "diff": "A", "topic": "材料費", "imgs": ["active-recall-images/kanri_1-4_p1.webp", "active-recall-images/kanri_1-4_p2.webp"]}, {"chapter": "第1章 費目別計算", "q": "問題1-5", "imp": "A", "diff": "A", "topic": "材料費（予定消費価格）", "imgs": ["active-recall-images/kanri_1-5_p1.webp", "active-recall-images/kanri_1-5_p2.webp"]}, {"chapter": "第1章 費目別計算", "q": "問題1-7", "imp": "A", "diff": "A", "topic": "労務費（予定賃率）", "imgs": ["active-recall-images/kanri_1-7.webp"]}, {"chapter": "第1章 費目別計算", "q": "問題1-9", "imp": "B", "diff": "A", "topic": "経費（経費の計算）", "imgs": ["active-recall-images/kanri_1-9_p1.webp", "active-recall-images/kanri_1-9_p2.webp"]}, {"chapter": "第1章 費目別計算", "q": "問題1-10", "imp": "B", "diff": "C", "topic": "原価の分類", "imgs": ["active-recall-images/kanri_1-10.webp"]}, {"chapter": "第1章 費目別計算", "q": "問題1-11", "imp": "B", "diff": "B", "topic": "原価の分類", "imgs": ["active-recall-images/kanri_1-11_p1.webp", "active-recall-images/kanri_1-11_p2.webp"]}, {"chapter": "第1章 費目別計算", "q": "問題1-12", "imp": "B", "diff": "B", "topic": "費目別計算全般、製造間接費", "imgs": ["active-recall-images/kanri_1-12_p1.webp", "active-recall-images/kanri_1-12_p2.webp"]}, {"chapter": "第1章 費目別計算", "q": "問題1-14", "imp": "B", "diff": "C", "topic": "原価の分類、費目別計算全般", "imgs": ["active-recall-images/kanri_1-14_p1.webp", "active-recall-images/kanri_1-14_p2.webp"]}, {"chapter": "第1章 費目別計算", "q": "問題1-15", "imp": "B", "diff": "B", "topic": "製造間接費の集計及び差異分析", "imgs": ["active-recall-images/kanri_1-15_p1.webp", "active-recall-images/kanri_1-15_p2.webp"]}, {"chapter": "第2章 部門別計算", "q": "問題2-1", "imp": "A", "diff": "A", "topic": "階梯式配賦法", "imgs": ["active-recall-images/kanri_2-1.webp"]}, {"chapter": "第2章 部門別計算", "q": "問題2-2", "imp": "A", "diff": "A", "topic": "相互配賦法（連立方程式法）", "imgs": ["active-recall-images/kanri_2-2_p1.webp", "active-recall-images/kanri_2-2_p2.webp"]}, {"chapter": "第2章 部門別計算", "q": "問題2-4", "imp": "B", "diff": "A", "topic": "相互配賦法の簡便法", "imgs": ["active-recall-images/kanri_2-4_p1.webp", "active-recall-images/kanri_2-4_p2.webp"]}, {"chapter": "第2章 部門別計算", "q": "問題2-6", "imp": "B", "diff": "B", "topic": "階梯式配賦法、配賦差異の分析", "imgs": ["active-recall-images/kanri_2-6.webp"]}, {"chapter": "第2章 部門別計算", "q": "問題2-7", "imp": "A", "diff": "B", "topic": "複数基準配賦法、予定配賦、配賦差異の分析", "imgs": ["active-recall-images/kanri_2-7.webp"]}, {"chapter": "第2章 部門別計算", "q": "問題2-8", "imp": "A", "diff": "B", "topic": "複数基準配賦法、階梯式配賦法、配賦差異の分析", "imgs": ["active-recall-images/kanri_2-8_p1.webp", "active-recall-images/kanri_2-8_p2.webp"]}, {"chapter": "第3章 個別原価計算", "q": "問題3-1", "imp": "B", "diff": "A", "topic": "部門別個別原価計算、階梯式配賦法", "imgs": ["active-recall-images/kanri_3-1.webp"]}, {"chapter": "第3章 個別原価計算", "q": "問題3-2", "imp": "A", "diff": "A", "topic": "製造間接費の実際配賦", "imgs": ["active-recall-images/kanri_3-2_p1.webp", "active-recall-images/kanri_3-2_p2.webp"]}, {"chapter": "第3章 個別原価計算", "q": "問題3-3", "imp": "A", "diff": "A", "topic": "仕損費の直接経費処理", "imgs": ["active-recall-images/kanri_3-3_p1.webp", "active-recall-images/kanri_3-3_p2.webp"]}, {"chapter": "第3章 個別原価計算", "q": "問題3-4", "imp": "A", "diff": "A", "topic": "仕損費の直接経費処理", "imgs": ["active-recall-images/kanri_3-4.webp"]}, {"chapter": "第3章 個別原価計算", "q": "問題3-5", "imp": "A", "diff": "B", "topic": "仕損費の直接経費処理", "imgs": ["active-recall-images/kanri_3-5_p1.webp", "active-recall-images/kanri_3-5_p2.webp"]}, {"chapter": "第3章 個別原価計算", "q": "問題3-6", "imp": "B", "diff": "B", "topic": "仕損費の間接経費処理", "imgs": ["active-recall-images/kanri_3-6_p1.webp", "active-recall-images/kanri_3-6_p2.webp"]}, {"chapter": "第3章 個別原価計算", "q": "問題3-7", "imp": "B", "diff": "A", "topic": "仕損費の直接経費処理と間接経費処理", "imgs": ["active-recall-images/kanri_3-7_p1.webp", "active-recall-images/kanri_3-7_p2.webp"]}, {"chapter": "第3章 個別原価計算", "q": "問題3-10", "imp": "B", "diff": "C", "topic": "原価計算表、関係勘定の記入", "imgs": ["active-recall-images/kanri_3-10_p1.webp", "active-recall-images/kanri_3-10_p2.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-1", "imp": "A", "diff": "A", "topic": "単純総合原価計算（正常仕損・異常仕損）", "imgs": ["active-recall-images/kanri_4-1.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-3", "imp": "B", "diff": "A", "topic": "単純総合原価計算（副産物）", "imgs": ["active-recall-images/kanri_4-3_p1.webp", "active-recall-images/kanri_4-3_p2.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-4", "imp": "A", "diff": "A", "topic": "単純総合原価計算（減損が安定的に発生）", "imgs": ["active-recall-images/kanri_4-4.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-5", "imp": "A", "diff": "B", "topic": "単純総合原価計算（減損が安定的に発生）", "imgs": ["active-recall-images/kanri_4-5_p1.webp", "active-recall-images/kanri_4-5_p2.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-7", "imp": "A", "diff": "A", "topic": "工程別総合原価計算（累加法、異常仕損）", "imgs": ["active-recall-images/kanri_4-7.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-8", "imp": "A", "diff": "A", "topic": "工程別総合原価計算（加工費法）", "imgs": ["active-recall-images/kanri_4-8.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-9", "imp": "B", "diff": "A", "topic": "工程別総合原価計算（累加法）", "imgs": ["active-recall-images/kanri_4-9_p1.webp", "active-recall-images/kanri_4-9_p2.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-10", "imp": "B", "diff": "B", "topic": "工程別総合原価計算（累加法・逆進計算）", "imgs": ["active-recall-images/kanri_4-10.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-11", "imp": "A", "diff": "A", "topic": "追加材料（終点投入）", "imgs": ["active-recall-images/kanri_4-11_p1.webp", "active-recall-images/kanri_4-11_p2.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-12", "imp": "A", "diff": "A", "topic": "追加材料（増量しない・平均投入）", "imgs": ["active-recall-images/kanri_4-12_p1.webp", "active-recall-images/kanri_4-12_p2.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-13", "imp": "B", "diff": "B", "topic": "追加材料（増量しない・区間平均投入）", "imgs": ["active-recall-images/kanri_4-13_p1.webp", "active-recall-images/kanri_4-13_p2.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-14", "imp": "B", "diff": "B", "topic": "追加材料（増量しない・区間平均投入）", "imgs": ["active-recall-images/kanri_4-14.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-15", "imp": "A", "diff": "A", "topic": "追加材料（増量する・始点投入）", "imgs": ["active-recall-images/kanri_4-15.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-16", "imp": "A", "diff": "A", "topic": "追加材料（増量する・始点投入）", "imgs": ["active-recall-images/kanri_4-16.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-17", "imp": "B", "diff": "B", "topic": "追加材料（増量する・中点投入）", "imgs": ["active-recall-images/kanri_4-17.webp"]}, {"chapter": "第4章 単純総合原価計算・追加材料", "q": "問題4-18", "imp": "B", "diff": "C", "topic": "追加材料（増量する・中点投入）、異常仕損", "imgs": ["active-recall-images/kanri_4-18.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-1", "imp": "A", "diff": "A", "topic": "組別総合原価計算", "imgs": ["active-recall-images/kanri_5-1.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-2", "imp": "A", "diff": "A", "topic": "組別総合原価計算", "imgs": ["active-recall-images/kanri_5-2.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-3", "imp": "A", "diff": "A", "topic": "組別総合原価計算", "imgs": ["active-recall-images/kanri_5-3.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-4", "imp": "A", "diff": "B", "topic": "組別総合原価計算、追加材料", "imgs": ["active-recall-images/kanri_5-4_p1.webp", "active-recall-images/kanri_5-4_p2.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-5", "imp": "A", "diff": "A", "topic": "工程別組別総合原価計算", "imgs": ["active-recall-images/kanri_5-5_p1.webp", "active-recall-images/kanri_5-5_p2.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-7", "imp": "A", "diff": "A", "topic": "等級別総合原価計算", "imgs": ["active-recall-images/kanri_5-7.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-8", "imp": "A", "diff": "A", "topic": "等級別総合原価計算", "imgs": ["active-recall-images/kanri_5-8.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-9", "imp": "A", "diff": "A", "topic": "等級別総合原価計算", "imgs": ["active-recall-images/kanri_5-9_p1.webp", "active-recall-images/kanri_5-9_p2.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-10", "imp": "B", "diff": "B", "topic": "等級別総合原価計算、等価係数の推定", "imgs": ["active-recall-images/kanri_5-10_p1.webp", "active-recall-images/kanri_5-10_p2.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-12", "imp": "B", "diff": "B", "topic": "連産品", "imgs": ["active-recall-images/kanri_5-12.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-13", "imp": "B", "diff": "A", "topic": "連産品", "imgs": ["active-recall-images/kanri_5-13_p1.webp", "active-recall-images/kanri_5-13_p2.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-14", "imp": "A", "diff": "A", "topic": "連産品", "imgs": ["active-recall-images/kanri_5-14_p1.webp", "active-recall-images/kanri_5-14_p2.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-15", "imp": "A", "diff": "B", "topic": "連産品", "imgs": ["active-recall-images/kanri_5-15.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-16", "imp": "B", "diff": "B", "topic": "連産品", "imgs": ["active-recall-images/kanri_5-16.webp"]}, {"chapter": "第5章 組別・等級別・連産品", "q": "問題5-17", "imp": "A", "diff": "A", "topic": "連産品", "imgs": ["active-recall-images/kanri_5-17_p1.webp", "active-recall-images/kanri_5-17_p2.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-1", "imp": "A", "diff": "A", "topic": "原価標準の設定と差異分析", "imgs": ["active-recall-images/kanri_6-1_p1.webp", "active-recall-images/kanri_6-1_p2.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-2", "imp": "A", "diff": "B", "topic": "差異分析（材料についての加工をする場合）", "imgs": ["active-recall-images/kanri_6-2_p1.webp", "active-recall-images/kanri_6-2_p2.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-3", "imp": "A", "diff": "B", "topic": "仕損の標準原価計算（度外視法）", "imgs": ["active-recall-images/kanri_6-3_p1.webp", "active-recall-images/kanri_6-3_p2.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-4", "imp": "B", "diff": "B", "topic": "仕損の標準原価計算（非度外視法）", "imgs": ["active-recall-images/kanri_6-4.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-5", "imp": "A", "diff": "A", "topic": "配合差異・歩留差異", "imgs": ["active-recall-images/kanri_6-5.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-6", "imp": "B", "diff": "A", "topic": "配合差異・歩留差異の分析", "imgs": ["active-recall-images/kanri_6-6.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-7", "imp": "B", "diff": "A", "topic": "配合差異・歩留差異の分析、減損", "imgs": ["active-recall-images/kanri_6-7.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-9", "imp": "B", "diff": "A", "topic": "配合差異・歩留差異の分析", "imgs": ["active-recall-images/kanri_6-9_p1.webp", "active-recall-images/kanri_6-9_p2.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-10", "imp": "B", "diff": "A", "topic": "配合差異・歩留差異の分析", "imgs": ["active-recall-images/kanri_6-10_p1.webp", "active-recall-images/kanri_6-10_p2.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-12", "imp": "A", "diff": "A", "topic": "原価差異の会計処理", "imgs": ["active-recall-images/kanri_6-12.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-13", "imp": "B", "diff": "B", "topic": "原価差異の会計処理", "imgs": ["active-recall-images/kanri_6-13.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-14", "imp": "A", "diff": "A", "topic": "標準原価計算の勘定記入（パーシャル・プラン）", "imgs": ["active-recall-images/kanri_6-14_p1.webp", "active-recall-images/kanri_6-14_p2.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-15", "imp": "A", "diff": "B", "topic": "標準原価計算の勘定記入（修正パーシャル・プラン）", "imgs": ["active-recall-images/kanri_6-15_p1.webp", "active-recall-images/kanri_6-15_p2.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-16", "imp": "B", "diff": "A", "topic": "標準原価計算の勘定記入（シングル・プラン）", "imgs": ["active-recall-images/kanri_6-16_p1.webp", "active-recall-images/kanri_6-16_p2.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-17", "imp": "B", "diff": "A", "topic": "工程別標準原価計算", "imgs": ["active-recall-images/kanri_6-17.webp"]}, {"chapter": "第6章 標準原価計算", "q": "問題6-18", "imp": "B", "diff": "A", "topic": "工程別標準原価計算", "imgs": ["active-recall-images/kanri_6-18_p1.webp", "active-recall-images/kanri_6-18_p2.webp"]}, {"chapter": "第7章 直接原価計算", "q": "問題7-5", "imp": "B", "diff": "A", "topic": "セグメント別損益計算書", "imgs": ["active-recall-images/kanri_7-5.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-1", "imp": "A", "diff": "B", "topic": "損益分岐点、増益率の計算", "imgs": ["active-recall-images/kanri_8-1.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-2", "imp": "B", "diff": "B", "topic": "目標営業利益率達成点", "imgs": ["active-recall-images/kanri_8-2.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-3", "imp": "A", "diff": "A", "topic": "目標投資利益率達成点", "imgs": ["active-recall-images/kanri_8-3.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-4", "imp": "A", "diff": "A", "topic": "損益分岐点、安全余裕率", "imgs": ["active-recall-images/kanri_8-4.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-5", "imp": "A", "diff": "B", "topic": "損益分岐点、安全余裕率", "imgs": ["active-recall-images/kanri_8-5.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-6", "imp": "A", "diff": "A", "topic": "次期の営業利益増加額", "imgs": ["active-recall-images/kanri_8-6_p1.webp", "active-recall-images/kanri_8-6_p2.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-7", "imp": "A", "diff": "A", "topic": "複数製品のCVP分析", "imgs": ["active-recall-images/kanri_8-7.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-8", "imp": "A", "diff": "A", "topic": "複数製品のCVP分析", "imgs": ["active-recall-images/kanri_8-8.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-9", "imp": "B", "diff": "A", "topic": "複数製品のCVP分析", "imgs": ["active-recall-images/kanri_8-9_p1.webp", "active-recall-images/kanri_8-9_p2.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-10", "imp": "A", "diff": "B", "topic": "複数製品のCVP分析", "imgs": ["active-recall-images/kanri_8-10.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-11", "imp": "B", "diff": "A", "topic": "複数製品のCVP分析", "imgs": ["active-recall-images/kanri_8-11.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-12", "imp": "B", "diff": "A", "topic": "感度分析", "imgs": ["active-recall-images/kanri_8-12_p1.webp", "active-recall-images/kanri_8-12_p2.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-13", "imp": "B", "diff": "B", "topic": "感度分析", "imgs": ["active-recall-images/kanri_8-13.webp"]}, {"chapter": "第8章 短期利益計画", "q": "問題8-14", "imp": "B", "diff": "B", "topic": "感度分析", "imgs": ["active-recall-images/kanri_8-14_p1.webp", "active-recall-images/kanri_8-14_p2.webp"]}, {"chapter": "第9章 予算管理", "q": "問題9-2", "imp": "B", "diff": "A", "topic": "予算実績差異分析（利益増減分析）", "imgs": ["active-recall-images/kanri_9-2_p1.webp", "active-recall-images/kanri_9-2_p2.webp"]}, {"chapter": "第9章 予算管理", "q": "問題9-3", "imp": "A", "diff": "A", "topic": "予算実績差異分析（セールス・ミックス差異分析）", "imgs": ["active-recall-images/kanri_9-3.webp"]}, {"chapter": "第9章 予算管理", "q": "問題9-4", "imp": "A", "diff": "A", "topic": "予算実績差異分析（セールス・ミックス差異分析）", "imgs": ["active-recall-images/kanri_9-4.webp"]}, {"chapter": "第9章 予算管理", "q": "問題9-6", "imp": "B", "diff": "B", "topic": "予算実績差異分析（セールス・ミックス差異分析・推定あり）", "imgs": ["active-recall-images/kanri_9-6.webp"]}, {"chapter": "第9章 予算管理", "q": "問題9-7", "imp": "A", "diff": "A", "topic": "予算実績差異分析（市場占拠率差異分析）", "imgs": ["active-recall-images/kanri_9-7.webp"]}, {"chapter": "第10章 財務情報分析", "q": "問題10-1", "imp": "A", "diff": "A", "topic": "収益性分析", "imgs": ["active-recall-images/kanri_10-1.webp"]}, {"chapter": "第10章 財務情報分析", "q": "問題10-2", "imp": "A", "diff": "A", "topic": "収益性分析、インタレスト・カバレッジ・レシオ", "imgs": ["active-recall-images/kanri_10-2_p1.webp", "active-recall-images/kanri_10-2_p2.webp"]}, {"chapter": "第10章 財務情報分析", "q": "問題10-3", "imp": "A", "diff": "A", "topic": "収益性分析", "imgs": ["active-recall-images/kanri_10-3.webp"]}, {"chapter": "第10章 財務情報分析", "q": "問題10-4", "imp": "A", "diff": "B", "topic": "収益性分析", "imgs": ["active-recall-images/kanri_10-4.webp"]}, {"chapter": "第10章 財務情報分析", "q": "問題10-5", "imp": "A", "diff": "A", "topic": "収益性分析、回転期間", "imgs": ["active-recall-images/kanri_10-5.webp"]}, {"chapter": "第10章 財務情報分析", "q": "問題10-6", "imp": "A", "diff": "B", "topic": "安全性分析、インタレスト・カバレッジ・レシオ", "imgs": ["active-recall-images/kanri_10-6.webp"]}, {"chapter": "第10章 財務情報分析", "q": "問題10-7", "imp": "A", "diff": "A", "topic": "安全性分析、インタレスト・カバレッジ・レシオ", "imgs": ["active-recall-images/kanri_10-7_p1.webp", "active-recall-images/kanri_10-7_p2.webp"]}, {"chapter": "第10章 財務情報分析", "q": "問題10-8", "imp": "B", "diff": "A", "topic": "各種指標からの推定問題", "imgs": ["active-recall-images/kanri_10-8.webp"]}, {"chapter": "第10章 財務情報分析", "q": "問題10-9", "imp": "B", "diff": "A", "topic": "各種指標からの推定問題", "imgs": ["active-recall-images/kanri_10-9_p1.webp", "active-recall-images/kanri_10-9_p2.webp"]}, {"chapter": "第11章 資金管理", "q": "問題11-1", "imp": "A", "diff": "A", "topic": "オペレーティング・サイクルとキャッシュ・コンバージョン・サイクル", "imgs": ["active-recall-images/kanri_11-1_p1.webp", "active-recall-images/kanri_11-1_p2.webp"]}, {"chapter": "第11章 資金管理", "q": "問題11-2", "imp": "A", "diff": "B", "topic": "キャッシュ・コンバージョン・サイクルの計算（推定あり）", "imgs": ["active-recall-images/kanri_11-2.webp"]}, {"chapter": "第11章 資金管理", "q": "問題11-3", "imp": "B", "diff": "A", "topic": "買掛金支払額", "imgs": ["active-recall-images/kanri_11-3.webp"]}, {"chapter": "第11章 資金管理", "q": "問題11-4", "imp": "B", "diff": "A", "topic": "現金回収額", "imgs": ["active-recall-images/kanri_11-4.webp"]}, {"chapter": "第11章 資金管理", "q": "問題11-5", "imp": "A", "diff": "A", "topic": "直接法による資金繰り計算", "imgs": ["active-recall-images/kanri_11-5_p1.webp", "active-recall-images/kanri_11-5_p2.webp"]}, {"chapter": "第11章 資金管理", "q": "問題11-6", "imp": "B", "diff": "B", "topic": "間接法による資金繰り計算", "imgs": ["active-recall-images/kanri_11-6.webp"]}, {"chapter": "第11章 資金管理", "q": "問題11-7", "imp": "B", "diff": "B", "topic": "資金繰り計算", "imgs": ["active-recall-images/kanri_11-7_p1.webp", "active-recall-images/kanri_11-7_p2.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-1", "imp": "A", "diff": "B", "topic": "受注可否の意思決定", "imgs": ["active-recall-images/kanri_12-1.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-2", "imp": "B", "diff": "B", "topic": "受注可否の意思決定", "imgs": ["active-recall-images/kanri_12-2_p1.webp", "active-recall-images/kanri_12-2_p2.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-3", "imp": "B", "diff": "A", "topic": "受注可否の意思決定", "imgs": ["active-recall-images/kanri_12-3.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-4", "imp": "A", "diff": "B", "topic": "自製か購入かの意思決定", "imgs": ["active-recall-images/kanri_12-4.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-5", "imp": "A", "diff": "A", "topic": "自製か購入かの意思決定", "imgs": ["active-recall-images/kanri_12-5.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-6", "imp": "A", "diff": "A", "topic": "自製か購入かの意思決定", "imgs": ["active-recall-images/kanri_12-6.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-7", "imp": "B", "diff": "B", "topic": "追加加工の可否の意思決定", "imgs": ["active-recall-images/kanri_12-7_p1.webp", "active-recall-images/kanri_12-7_p2.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-8", "imp": "B", "diff": "B", "topic": "追加加工の可否の意思決定", "imgs": ["active-recall-images/kanri_12-8.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-9", "imp": "B", "diff": "B", "topic": "セグメントの廃止の意思決定", "imgs": ["active-recall-images/kanri_12-9.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-10", "imp": "B", "diff": "C", "topic": "残業か2交代制かの意思決定", "imgs": ["active-recall-images/kanri_12-10.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-12", "imp": "B", "diff": "B", "topic": "新製品製造か否かの意思決定", "imgs": ["active-recall-images/kanri_12-12_p1.webp", "active-recall-images/kanri_12-12_p2.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-13", "imp": "B", "diff": "A", "topic": "最適セールス・ミックス（制約条件1つ）", "imgs": ["active-recall-images/kanri_12-13.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-14", "imp": "B", "diff": "A", "topic": "最適セールス・ミックス（制約条件2つ）", "imgs": ["active-recall-images/kanri_12-14.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-16", "imp": "A", "diff": "A", "topic": "機会原価を含む意思決定", "imgs": ["active-recall-images/kanri_12-16.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-17", "imp": "A", "diff": "A", "topic": "機会原価を含む意思決定", "imgs": ["active-recall-images/kanri_12-17.webp"]}, {"chapter": "第12章 戦術的意思決定", "q": "問題12-18", "imp": "B", "diff": "A", "topic": "不確実性下の意思決定", "imgs": ["active-recall-images/kanri_12-18.webp"]}, {"chapter": "第13章 戦略的意思決定", "q": "問題13-1", "imp": "A", "diff": "A", "topic": "正味現在価値法", "imgs": ["active-recall-images/kanri_13-1.webp"]}, {"chapter": "第13章 戦略的意思決定", "q": "問題13-2", "imp": "A", "diff": "A", "topic": "正味現在価値法", "imgs": ["active-recall-images/kanri_13-2_p1.webp", "active-recall-images/kanri_13-2_p2.webp"]}, {"chapter": "第13章 戦略的意思決定", "q": "問題13-3", "imp": "B", "diff": "B", "topic": "正味現在価値法（法人税を考慮する場合）", "imgs": ["active-recall-images/kanri_13-3.webp"]}, {"chapter": "第13章 戦略的意思決定", "q": "問題13-4", "imp": "A", "diff": "A", "topic": "正味現在価値法（タックス・シールド）", "imgs": ["active-recall-images/kanri_13-4_p1.webp", "active-recall-images/kanri_13-4_p2.webp"]}, {"chapter": "第13章 戦略的意思決定", "q": "問題13-5", "imp": "A", "diff": "B", "topic": "内部利益率法", "imgs": ["active-recall-images/kanri_13-5_p1.webp", "active-recall-images/kanri_13-5_p2.webp"]}, {"chapter": "第13章 戦略的意思決定", "q": "問題13-7", "imp": "B", "diff": "B", "topic": "取替投資", "imgs": ["active-recall-images/kanri_13-7_p1.webp", "active-recall-images/kanri_13-7_p2.webp"]}, {"chapter": "第13章 戦略的意思決定", "q": "問題13-8", "imp": "A", "diff": "A", "topic": "取替投資（法人税等を考慮する場合）", "imgs": ["active-recall-images/kanri_13-8_p1.webp", "active-recall-images/kanri_13-8_p2.webp"]}, {"chapter": "第13章 戦略的意思決定", "q": "問題13-9", "imp": "B", "diff": "B", "topic": "取替投資（法人税等を考慮する場合）", "imgs": ["active-recall-images/kanri_13-9.webp"]}, {"chapter": "第14章 分権化組織", "q": "問題14-1", "imp": "A", "diff": "B", "topic": "ROIとRI", "imgs": ["active-recall-images/kanri_14-1_p1.webp", "active-recall-images/kanri_14-1_p2.webp"]}, {"chapter": "第14章 分権化組織", "q": "問題14-2", "imp": "B", "diff": "C", "topic": "ROIとRI", "imgs": ["active-recall-images/kanri_14-2_p1.webp", "active-recall-images/kanri_14-2_p2.webp"]}, {"chapter": "第14章 分権化組織", "q": "問題14-3", "imp": "A", "diff": "B", "topic": "ROIとRI", "imgs": ["active-recall-images/kanri_14-3.webp"]}, {"chapter": "第14章 分権化組織", "q": "問題14-4", "imp": "A", "diff": "A", "topic": "ROIとRI", "imgs": ["active-recall-images/kanri_14-4_p1.webp", "active-recall-images/kanri_14-4_p2.webp"]}, {"chapter": "第14章 分権化組織", "q": "問題14-5", "imp": "B", "diff": "C", "topic": "ROIとRI（推定問題）", "imgs": ["active-recall-images/kanri_14-5.webp"]}, {"chapter": "第14章 分権化組織", "q": "問題14-6", "imp": "B", "diff": "A", "topic": "内部振替価格", "imgs": ["active-recall-images/kanri_14-6.webp"]}, {"chapter": "第14章 分権化組織", "q": "問題14-7", "imp": "B", "diff": "A", "topic": "内部振替価格", "imgs": ["active-recall-images/kanri_14-7.webp"]}, {"chapter": "第14章 分権化組織", "q": "問題14-8", "imp": "B", "diff": "A", "topic": "内部振替価格", "imgs": ["active-recall-images/kanri_14-8_p1.webp", "active-recall-images/kanri_14-8_p2.webp"]}, {"chapter": "第14章 分権化組織", "q": "問題14-9", "imp": "B", "diff": "A", "topic": "内部振替価格", "imgs": ["active-recall-images/kanri_14-9.webp"]}, {"chapter": "第14章 分権化組織", "q": "問題14-12", "imp": "B", "diff": "A", "topic": "DCF法による企業価値評価", "imgs": ["active-recall-images/kanri_14-12.webp"]}, {"chapter": "第15章 原価管理", "q": "問題15-1", "imp": "A", "diff": "A", "topic": "原価企画", "imgs": ["active-recall-images/kanri_15-1.webp"]}, {"chapter": "第15章 原価管理", "q": "問題15-2", "imp": "A", "diff": "A", "topic": "原価企画", "imgs": ["active-recall-images/kanri_15-2.webp"]}, {"chapter": "第15章 原価管理", "q": "問題15-3", "imp": "B", "diff": "A", "topic": "原価企画", "imgs": ["active-recall-images/kanri_15-3.webp"]}, {"chapter": "第16章 活動基準原価計算", "q": "問題16-1", "imp": "B", "diff": "A", "topic": "ABC", "imgs": ["active-recall-images/kanri_16-1.webp"]}, {"chapter": "第16章 活動基準原価計算", "q": "問題16-2", "imp": "B", "diff": "A", "topic": "ABC", "imgs": ["active-recall-images/kanri_16-2_p1.webp", "active-recall-images/kanri_16-2_p2.webp"]}, {"chapter": "第16章 活動基準原価計算", "q": "問題16-3", "imp": "B", "diff": "B", "topic": "ABCとABM", "imgs": ["active-recall-images/kanri_16-3_p1.webp", "active-recall-images/kanri_16-3_p2.webp"]}, {"chapter": "第16章 活動基準原価計算", "q": "問題16-4", "imp": "B", "diff": "A", "topic": "ABC（製品別原価計算）", "imgs": ["active-recall-images/kanri_16-4_p1.webp", "active-recall-images/kanri_16-4_p2.webp"]}];
+
+    const CATEGORIES = [
+      { id: 'zaimu-keisan', name: '財務会計（計算）', color: 'red', hasData: true, data: ZAIMU_KEISAN },
+      { id: 'kanri-keisan', name: '管理会計（計算）', color: 'orange', hasData: true, data: KANRI_KEISAN },
+      { id: 'zaimu-riron', name: '財務会計（理論）', color: 'blue' },
+      { id: 'kanri-riron', name: '管理会計（理論）', color: 'orange' },
+      { id: 'kansaron', name: '監査論', color: 'purple' },
+      { id: 'kigyoho', name: '企業法', color: 'teal' }
+    ];
+
+    /* 全科目の評価件数を集計するヘルパー */
+    const getRatingCounts = () => {
+      const counts = { '全然ダメ': 0, '曖昧': 0, '思い出せた': 0 };
+      CATEGORIES.forEach(cat => {
+        if (!cat.hasData || !cat.data) return;
+        const state = getState(cat.id);
+        Object.values(state).forEach(s => {
+          if (s.mastered) return;
+          if (s.rating && counts.hasOwnProperty(s.rating)) counts[s.rating]++;
+        });
+      });
+      return counts;
+    };
+
+    /* 全然ダメが5問以上（前日以前の分）なら新規ロック */
+    const isLockedByZenzenDame = (catId) => {
+      const state = getState(catId);
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      const todayMs = todayStart.getTime();
+      let count = 0;
+      Object.values(state).forEach(s => {
+        if (s.mastered) return;
+        if (s.rating === '全然ダメ' && s.ratedAt && s.ratedAt < todayMs) count++;
+      });
+      return count >= 5;
+    };
+
+    const getStorageKey = (catId) => `ar3_${catId}`;
+    const getState = (catId) => {
+      const data = localStorage.getItem(getStorageKey(catId));
+      return data ? JSON.parse(data) : {};
+    };
+    const setState = (catId, state) => {
+      localStorage.setItem(getStorageKey(catId), JSON.stringify(state));
+    };
+
+    /* 起動時: 旧ロジック(時刻ベース)のnextReviewを日付境界(0:00)に正規化 */
+    (() => {
+      const migKey = 'ar3_date_migrate_v1';
+      if (localStorage.getItem(migKey)) return;
+      try {
+        CATEGORIES.forEach(cat => {
+          const state = getState(cat.id);
+          let changed = false;
+          Object.keys(state).forEach(k => {
+            const s = state[k];
+            if (s && s.nextReview && !s.mastered) {
+              const d = new Date(s.nextReview);
+              d.setHours(0,0,0,0);
+              if (d.getTime() !== s.nextReview) {
+                s.nextReview = d.getTime();
+                changed = true;
+              }
+            }
+          });
+          if (changed) setState(cat.id, state);
+        });
+      } catch(e){}
+      localStorage.setItem(migKey, '1');
+    })();
+
+    const shuffle = (arr) => {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+
+    const getDueProblems = (catId, problems) => {
+      const state = getState(catId);
+      const now = new Date().getTime();
+      return problems.filter(p => {
+        if (!p.imgs || p.imgs.length === 0) return false;
+        const key = `${p.q}`;
+        const status = state[key];
+        if (!status) return true;
+        if (status.mastered) return false;
+        return status.nextReview && status.nextReview <= now;
+      });
+    };
+
+    const getColorClasses = (color) => {
+      const colors = {
+        blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' },
+        red: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' },
+        green: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700' },
+        orange: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700' },
+        purple: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700' },
+        teal: { bg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700' },
+      };
+      return colors[color] || colors.blue;
+    };
+
+    const THEME_MAP = {
+      red:    { accent:'#e53e3e', accent2:'#c53030', accentLight:'#fff5f5', accentShadow:'rgba(229,62,62,.12)' },
+      orange: { accent:'#e67e22', accent2:'#d35400', accentLight:'#fff8f0', accentShadow:'rgba(230,126,34,.12)' },
+      blue:   { accent:'#3182ce', accent2:'#2b6cb0', accentLight:'#ebf8ff', accentShadow:'rgba(49,130,206,.12)' },
+      green:  { accent:'#38a169', accent2:'#2f855a', accentLight:'#f0fff4', accentShadow:'rgba(56,161,105,.12)' },
+      purple: { accent:'#805ad5', accent2:'#6b46c1', accentLight:'#faf5ff', accentShadow:'rgba(128,90,213,.12)' },
+      teal:   { accent:'#319795', accent2:'#2c7a7b', accentLight:'#e6fffa', accentShadow:'rgba(49,151,149,.12)' },
+    };
+    const applyTheme = (color) => {
+      const t = THEME_MAP[color] || THEME_MAP.red;
+      const r = document.documentElement.style;
+      r.setProperty('--accent', t.accent);
+      r.setProperty('--accent2', t.accent2);
+      r.setProperty('--accent-light', t.accentLight);
+      r.setProperty('--accent-shadow', t.accentShadow);
+    };
+    const resetTheme = () => {
+      const r = document.documentElement.style;
+      ['--accent','--accent2','--accent-light','--accent-shadow'].forEach(p => r.removeProperty(p));
+    };
+
+    /* ── TodoPanel (reusable) ── */
+    const TodoPanel = ({ storageKey, title, placeholder, style: ws }) => {
+      const [items, setItems] = useState([]);
+      const [input, setInput] = useState('');
+      useEffect(() => { const d = localStorage.getItem(storageKey); if (d) setItems(JSON.parse(d)); }, [storageKey]);
+      const save = (n) => { setItems(n); localStorage.setItem(storageKey, JSON.stringify(n)); };
+      const add = () => { if (!input.trim()) return; save([...items, { id: Date.now(), text: input.trim(), done: false }]); setInput(''); };
+      const toggle = (id) => save(items.map(it => it.id === id ? { ...it, done: !it.done } : it));
+      return (
+        <div style={{background:'var(--card)',borderRadius:12,padding:12,boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'1px solid var(--border)',display:'flex',flexDirection:'column',minHeight:0,...(ws||{})}}>
+          <div style={{fontSize:13,fontWeight:800,color:'var(--text)',marginBottom:6}}>To Do List</div>
+          <div style={{display:'flex',gap:5,marginBottom:6}}>
+            <input type="text" value={input} onChange={e => setInput(e.target.value)}
+              placeholder="今日のやることを追加" style={{flex:1,padding:'5px 8px',border:'1px solid var(--border)',borderRadius:6,fontSize:12,outline:'none',background:'var(--card2)'}} />
+            <button onClick={add} style={{padding:'5px 10px',background:'var(--sky,#4a9bd9)',color:'#fff',border:'none',borderRadius:6,fontWeight:700,fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>追加</button>
+          </div>
+          <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:2}}>
+            {items.length===0 && <div style={{color:'var(--text2)',fontSize:11,textAlign:'center',padding:10}}>まだ項目がありません</div>}
+            {items.map(it => (
+              <div key={it.id} style={{display:'flex',alignItems:'center',gap:6,padding:'3px 6px',background:it.done?'var(--card2)':'var(--card)',borderRadius:5,border:'1px solid var(--border)'}}>
+                <span style={{flex:1,fontSize:12,color:it.done?'var(--text2)':'var(--text)',textDecoration:it.done?'line-through':'none',wordBreak:'break-word'}}>{it.text}</span>
+                <input type="checkbox" checked={it.done} onChange={() => toggle(it.id)} style={{accentColor:'var(--sky,#4a9bd9)',cursor:'pointer',width:14,height:14,flexShrink:0}} />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    /* ── MemoPanel ── */
+    const MemoPanel = ({ storageKey, title, placeholder, style: ws }) => {
+      const [text, setText] = useState('');
+      useEffect(() => { const d = localStorage.getItem(storageKey); if (d) setText(d); }, [storageKey]);
+      const save = (v) => { setText(v); localStorage.setItem(storageKey, v); };
+      return (
+        <div style={{background:'var(--card)',borderRadius:12,padding:12,boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'1px solid var(--border)',display:'flex',flexDirection:'column',minHeight:0,...(ws||{})}}>
+          <div style={{fontSize:13,fontWeight:800,color:'var(--text)',marginBottom:6}}>{title}</div>
+          <textarea value={text} onChange={e => save(e.target.value)} placeholder={placeholder}
+            style={{flex:1,width:'100%',padding:'6px 8px',border:'1px solid var(--border)',borderRadius:8,fontSize:12,outline:'none',background:'var(--card2)',resize:'none',lineHeight:1.7,color:'var(--text)',boxSizing:'border-box',minHeight:50}} />
+        </div>
+      );
+    };
+
+    /* ── Study Timer (本日の勉強時間) ── */
+    const StudyTimer = () => {
+      const today = new Date();
+      const dayStr = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
+      const SK_DAY = `ar3_timer_day_${dayStr}`;
+      const SK_RUN = 'ar3_timer_running';
+      const SK_START = 'ar3_timer_start';
+      const SK_MONTH = 'ar3_study_time';
+
+      const [elapsed, setElapsed] = useState(0);     /* 今日の累積秒 */
+      const [running, setRunning] = useState(false);
+      const intervalRef = React.useRef(null);
+
+      /* 初期化: 保存済み秒数 + もし前回running中だったら差分を足す */
+      useEffect(() => {
+        let saved = parseInt(localStorage.getItem(SK_DAY) || '0', 10);
+        const wasRunning = localStorage.getItem(SK_RUN) === '1';
+        const startTs = parseInt(localStorage.getItem(SK_START) || '0', 10);
+
+        /* 日付変更チェック: 前回のstartが今日でなければリセット＆月へ加算 */
+        if (startTs > 0) {
+          const sd = new Date(startTs);
+          const startDay = `${sd.getFullYear()}-${sd.getMonth()+1}-${sd.getDate()}`;
+          if (startDay !== dayStr && wasRunning) {
+            /* 前日分の残りを月に加算してリセット */
+            const prevEnd = new Date(sd.getFullYear(), sd.getMonth(), sd.getDate(), 23, 59, 59).getTime();
+            const prevExtra = Math.floor((prevEnd - startTs) / 1000);
+            const prevDayKey = `ar3_timer_day_${startDay}`;
+            const prevSaved = parseInt(localStorage.getItem(prevDayKey) || '0', 10);
+            const prevTotal = prevSaved + prevExtra;
+            localStorage.setItem(prevDayKey, String(prevTotal));
+            flushDayToMonth(prevTotal, new Date(startTs));
+            saved = 0;
+            localStorage.setItem(SK_DAY, '0');
+            localStorage.removeItem(SK_RUN);
+            localStorage.removeItem(SK_START);
+          }
+        }
+
+        if (wasRunning && startTs > 0) {
+          const extra = Math.floor((Date.now() - startTs) / 1000);
+          saved += extra;
+          setElapsed(saved);
+          setRunning(true);
+          localStorage.setItem(SK_START, String(Date.now()));
+          localStorage.setItem(SK_DAY, String(saved));
+        } else {
+          setElapsed(saved);
+        }
+      }, []);
+
+      /* 月累計へ加算するヘルパー */
+      const flushDayToMonth = (daySecs, dateObj) => {
+        const d = dateObj || new Date();
+        const mk = SK_MONTH;
+        const raw = localStorage.getItem(mk);
+        const data = raw ? JSON.parse(raw) : { monthH: 135, monthM: 50, totalH: 1731, totalM: 52, lastFlushed: '' };
+        const addM = Math.floor(daySecs / 60);
+        let mh = (data.monthH || 0), mm = (data.monthM || 0) + addM;
+        mh += Math.floor(mm / 60); mm = mm % 60;
+        let th = (data.totalH || 0), tm = (data.totalM || 0) + addM;
+        th += Math.floor(tm / 60); tm = tm % 60;
+        data.monthH = mh; data.monthM = mm; data.totalH = th; data.totalM = tm;
+        localStorage.setItem(mk, JSON.stringify(data));
+      };
+
+      /* タイマー tick */
+      useEffect(() => {
+        if (running) {
+          intervalRef.current = setInterval(() => {
+            setElapsed(prev => {
+              const next = prev + 1;
+              localStorage.setItem(SK_DAY, String(next));
+              return next;
+            });
+          }, 1000);
+        } else {
+          clearInterval(intervalRef.current);
+        }
+        return () => clearInterval(intervalRef.current);
+      }, [running]);
+
+      const start = () => {
+        setRunning(true);
+        localStorage.setItem(SK_RUN, '1');
+        localStorage.setItem(SK_START, String(Date.now()));
+      };
+      const stop = () => {
+        setRunning(false);
+        localStorage.removeItem(SK_RUN);
+        localStorage.removeItem(SK_START);
+      };
+
+      const h = Math.floor(elapsed / 3600);
+      const m = Math.floor((elapsed % 3600) / 60);
+      const s = elapsed % 60;
+      const pad = (n) => String(n).padStart(2, '0');
+
+      return (
+        <div style={{textAlign:'center'}}>
+          <div style={{fontFamily:"'SF Mono','Menlo',monospace",fontSize:30,fontWeight:900,color:'var(--text)',letterSpacing:2}}>
+            {h > 0 && <>{h}<span style={{fontSize:14}}>:</span></>}{pad(m)}<span style={{fontSize:14}}>:</span>{pad(s)}
+          </div>
+          <div style={{marginTop:8}}>
+            {!running ? (
+              <button onClick={start} style={{padding:'6px 24px',background:'#38a169',color:'#fff',border:'none',borderRadius:8,fontWeight:800,fontSize:13,cursor:'pointer',letterSpacing:1}}>▶ START</button>
+            ) : (
+              <button onClick={stop} style={{padding:'6px 24px',background:'#e53e3e',color:'#fff',border:'none',borderRadius:8,fontWeight:800,fontSize:13,cursor:'pointer',letterSpacing:1}}>■ STOP</button>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    /* ── Monthly Study Time Display (3月の勉強時間 + 全累積) ── */
+    const MonthlyStudyTime = () => {
+      const SK = 'ar3_study_time';
+      const [data, setData] = useState({ monthH: 135, monthM: 50, totalH: 1731, totalM: 52 });
+      const [editing, setEditing] = useState(false);
+      useEffect(() => { const d = localStorage.getItem(SK); if (d) setData(JSON.parse(d)); }, []);
+      const save = (nd) => { setData(nd); localStorage.setItem(SK, JSON.stringify(nd)); };
+      const today = new Date();
+      const monthName = `${today.getMonth()+1}月の勉強時間`;
+
+      if (editing) {
+        return (
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6}} onClick={e => e.stopPropagation()}>
+            <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap',justifyContent:'center'}}>
+              <input type="number" value={data.monthH} onChange={e => save({...data, monthH:Number(e.target.value)})}
+                style={{width:50,padding:'3px 6px',border:'1px solid var(--border)',borderRadius:4,fontSize:12,textAlign:'center'}} />
+              <span style={{fontSize:11}}>時間</span>
+              <input type="number" value={data.monthM} onChange={e => save({...data, monthM:Number(e.target.value)})}
+                style={{width:40,padding:'3px 6px',border:'1px solid var(--border)',borderRadius:4,fontSize:12,textAlign:'center'}} />
+              <span style={{fontSize:11}}>分</span>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap',justifyContent:'center'}}>
+              <span style={{fontSize:10,color:'var(--text2)'}}>累積</span>
+              <input type="number" value={data.totalH} onChange={e => save({...data, totalH:Number(e.target.value)})}
+                style={{width:55,padding:'3px 6px',border:'1px solid var(--border)',borderRadius:4,fontSize:12,textAlign:'center'}} />
+              <span style={{fontSize:11}}>h</span>
+              <input type="number" value={data.totalM} onChange={e => save({...data, totalM:Number(e.target.value)})}
+                style={{width:40,padding:'3px 6px',border:'1px solid var(--border)',borderRadius:4,fontSize:12,textAlign:'center'}} />
+              <span style={{fontSize:11}}>m</span>
+            </div>
+            <button onClick={() => setEditing(false)} style={{padding:'3px 14px',background:'#e53e3e',color:'#fff',border:'none',borderRadius:6,fontWeight:700,fontSize:10,cursor:'pointer'}}>OK</button>
+          </div>
+        );
+      }
+      return (
+        <div onClick={() => setEditing(true)} style={{cursor:'pointer',textAlign:'center'}}>
+          <div style={{fontSize:11,fontWeight:700,color:'var(--accent,#e53e3e)',marginBottom:3}}>{monthName}</div>
+          <div style={{fontSize:22,fontWeight:900,color:'var(--text)'}}>
+            {data.monthH}<span style={{fontSize:12,fontWeight:600}}>時間</span>{data.monthM}<span style={{fontSize:12,fontWeight:600}}>分</span>
+          </div>
+          <div style={{fontSize:12,color:'var(--text2)',marginTop:4,borderTop:'1px solid var(--border)',paddingTop:4}}>
+            <span style={{fontWeight:700}}>全累積</span>　{data.totalH}<span style={{fontSize:10}}>時間</span>{data.totalM}<span style={{fontSize:10}}>分</span>
+          </div>
+        </div>
+      );
+    };
+
+    /* ── Monthly Goal (3月目標) ── */
+    const MonthlyGoal = () => {
+      const today = new Date();
+      const mk = `ar3_goal_${today.getFullYear()}_${today.getMonth()+1}`;
+      const [goal, setGoal] = useState('');
+      const [editing, setEditing] = useState(false);
+      useEffect(() => { const d = localStorage.getItem(mk); if (d) setGoal(d); }, [mk]);
+      const save = (v) => { setGoal(v); localStorage.setItem(mk, v); };
+      const monthName = `${today.getMonth()+1}月目標`;
+      return (
+        <div style={{textAlign:'center',width:'100%',cursor:'pointer'}} onClick={() => { if (!editing) setEditing(true); }}>
+          <div style={{fontSize:14,fontWeight:800,color:'var(--text2)',marginBottom:8}}>{monthName}</div>
+          {editing ? (
+            <div onClick={e => e.stopPropagation()}>
+              <textarea value={goal} onChange={e => save(e.target.value)} autoFocus placeholder="今月の目標を書く..."
+                style={{width:'90%',minHeight:80,padding:8,border:'1.5px solid var(--border)',borderRadius:8,fontSize:13,outline:'none',background:'var(--card2)',resize:'none',lineHeight:1.7,textAlign:'center',color:'var(--text)'}} />
+              <div><button onClick={() => setEditing(false)} style={{marginTop:4,padding:'3px 14px',background:'var(--sky,#4a9bd9)',color:'#fff',border:'none',borderRadius:6,fontWeight:700,fontSize:11,cursor:'pointer'}}>OK</button></div>
+            </div>
+          ) : (
+            <div style={{fontSize:14,color:'var(--text)',whiteSpace:'pre-wrap',lineHeight:1.8,minHeight:30}}>
+              {goal || <span style={{color:'var(--text2)',fontSize:12}}>クリックして入力</span>}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    /* ── StudyDiary: 過去の勉強文章 (日付ナビ付き) ── */
+    const StudyDiary = () => {
+      const [offset, setOffset] = useState(0);
+      const getDateForOffset = (off) => {
+        const d = new Date(); d.setDate(d.getDate() - off); return d;
+      };
+      const d = getDateForOffset(offset);
+      const dk = `ar3_diary_${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}`;
+      const [text, setText] = useState('');
+      useEffect(() => {
+        const saved = localStorage.getItem(dk);
+        setText(saved || '');
+      }, [dk]);
+      const save = (v) => { setText(v); localStorage.setItem(dk, v); };
+      const fmt = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}（${['日','月','火','水','木','金','土'][d.getDay()]}）`;
+      const isToday = offset === 0;
+      return (
+        <div style={{background:'rgba(255,255,255,.88)',border:'1.5px solid rgba(255,255,255,.5)',borderRadius:12,padding:'10px 14px',display:'flex',flexDirection:'column',height:'100%',minHeight:0,backdropFilter:'blur(8px)',boxShadow:'0 2px 12px rgba(0,0,0,.06)'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+            <button onClick={() => setOffset(o => o+1)} style={{background:'none',border:'none',fontSize:18,cursor:'pointer',color:'#4a9bd9',padding:'0 6px'}}>◁</button>
+            <span style={{fontSize:13,fontWeight:700,color: isToday ? '#2b7bb9' : '#2d3748'}}>{fmt}{isToday ? '（今日）' : ''}</span>
+            <button onClick={() => setOffset(o => Math.max(0, o-1))} disabled={offset===0} style={{background:'none',border:'none',fontSize:18,cursor: offset===0?'default':'pointer',color: offset===0?'#cee0f2':'#4a9bd9',padding:'0 6px'}}>▷</button>
+          </div>
+          <textarea value={text} onChange={e => save(e.target.value)}
+            placeholder={isToday ? "今日の勉強内容を書く..." : "この日の勉強記録..."}
+            style={{flex:1,width:'100%',padding:8,border:'1px solid #e2e8f0',borderRadius:8,fontSize:13,outline:'none',background: isToday ? '#fff' : '#f7fafc',resize:'none',lineHeight:1.7,color:'#2d3748',boxSizing:'border-box',minHeight:60}} />
+        </div>
+      );
+    };
+
+    /* 丸数字変換テーブル（前方定義） */
+    const _N2C = ['','①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳','㉑','㉒','㉓','㉔','㉕','㉖','㉗','㉘','㉙','㉚','㉛','㉜','㉝','㉞','㉟'];
+    /* 問題集の章番号 → テキスト巻(v) + テキスト内の章番号(tc) */
+    /* 財務: 問題集34章 → テキスト①〜⑨ */
+    const ZAIMU_MAP = {
+      1:{v:1,tc:1},2:{v:1,tc:2},3:{v:1,tc:3},4:{v:1,tc:4},5:{v:1,tc:5},6:{v:1,tc:6},7:{v:1,tc:7},
+      8:{v:2,tc:9},9:{v:2,tc:10},10:{v:2,tc:11},11:{v:2,tc:12},
+      12:{v:3,tc:14},13:{v:3,tc:15},14:{v:3,tc:16},15:{v:3,tc:17},
+      16:{v:4,tc:18},17:{v:4,tc:19},18:{v:4,tc:21},19:{v:4,tc:22},
+      20:{v:5,tc:23},21:{v:5,tc:24},22:{v:5,tc:25},23:{v:5,tc:26},24:{v:5,tc:27},25:{v:5,tc:28},
+      26:{v:6,tc:29},
+      27:{v:8,tc:31},28:{v:8,tc:32},29:{v:8,tc:33},30:{v:8,tc:34},
+      31:{v:9,tc:36},32:{v:7,tc:39},33:{v:7,tc:40},34:{v:1,tc:0}
+    };
+    /* 管理: 問題集16章 → テキスト①〜④ */
+    const KANRI_MAP = {
+      1:{v:1,tc:1},2:{v:1,tc:7},3:{v:1,tc:9},
+      4:{v:2,tc:10},5:{v:2,tc:11},
+      6:{v:2,tc:15},7:{v:3,tc:17},8:{v:3,tc:19},9:{v:3,tc:20},
+      10:{v:3,tc:22},11:{v:3,tc:23},
+      12:{v:4,tc:24},13:{v:4,tc:25},14:{v:4,tc:27},15:{v:4,tc:28},16:{v:4,tc:29}
+    };
+    /* 問題IDからテキスト巻+テキスト章番号+章名を取得 */
+    const getProbInfo = (catId, qId, catData) => {
+      const m = qId.match(/問題(\d+)-(\d+)/);
+      if (!m) return null;
+      const probCh = parseInt(m[1]);
+      const map = catId === 'zaimu-keisan' ? ZAIMU_MAP : catId === 'kanri-keisan' ? KANRI_MAP : null;
+      if (!map || !map[probCh]) return null;
+      const { v, tc } = map[probCh];
+      const volCircled = _N2C[v] || v;
+      const tcCircled = tc > 0 ? (_N2C[tc] || tc) : '';
+      // 章名（問題データから取得）
+      const data = catData || [];
+      const sameChapter = data.filter(p => p.q.startsWith('問題'+probCh+'-'));
+      const chName = sameChapter.length > 0 ? (sameChapter[0].chapter || '').replace(/^第\d+章\s*/, '') : '';
+      return { vol: 'テキスト'+volCircled, tcCircled, chName };
+    };
+    /* 問題データからimgsを検索するヘルパー */
+    const findProbImgs = (catId, qId) => {
+      const cat = CATEGORIES.find(c => c.id === catId);
+      if (!cat || !cat.data) return null;
+      const prob = cat.data.find(p => p.q === qId);
+      return prob ? prob.imgs : null;
+    };
+    /* カテゴリデータを取得するヘルパー */
+    const getCatData = (catId) => {
+      const cat = CATEGORIES.find(c => c.id === catId);
+      return (cat && cat.data) || [];
+    };
+
+    /* ── Category Select (top page) ── */
+    const CategorySelect = ({ onSelect, onStartRecall }) => {
+      const today = new Date();
+      const dayKey = `ar3_todo_${today.getFullYear()}_${today.getMonth()+1}_${today.getDate()}`;
+      const memoKey = `ar3_memo_${today.getFullYear()}_${today.getMonth()+1}_${today.getDate()}`;
+
+      /* 今日とくべき問題: 「全然ダメ」「曖昧」で評価済み＆復習期日到来のみ */
+      const allDue = React.useMemo(() => {
+        const result = [];
+        const now = Date.now();
+        CATEGORIES.forEach(cat => {
+          if (!cat.hasData || !cat.data) return;
+          const state = getState(cat.id);
+          cat.data.forEach(p => {
+            if (!p.imgs || p.imgs.length === 0) return;
+            const key = `${p.q}`;
+            const s = state[key];
+            if (!s) return;                     // 未回答は除外
+            if (s.mastered) return;             // 完璧は除外
+            if (s.rating !== '全然ダメ' && s.rating !== '曖昧') return;
+            if (s.nextReview && s.nextReview > now) return; // まだ期日前
+            result.push({ ...p, catId: cat.id, catName: cat.name, catColor: cat.color });
+          });
+        });
+        return shuffle(result);
+      }, []);
+
+      /* 問題クリック → モーダル表示 */
+      const [activeProblem, setActiveProblem] = useState(null);
+      const [modalRonten, setModalRonten] = useState('');
+      const [modalKaiho, setModalKaiho] = useState('');
+      const [showPrevNotes, setShowPrevNotes] = useState(false);
+      const [prevNotes, setPrevNotes] = useState(null);
+
+      const [expandedNoteId, setExpandedNoteId] = useState(null);
+      const [modalQueueIdx, setModalQueueIdx] = useState(-1);
+      const [modalMarkerActive, setModalMarkerActive] = useState(false);
+      const [modalMarkerColor, setModalMarkerColor] = useState('rgba(255,255,0,0.3)');
+      const [modalEraseMode, setModalEraseMode] = useState(false);
+      const modalCanvasRef = useRef(null);
+      const modalPreviewRef = useRef(null);
+      const modalImgRef = useRef(null);
+      const modalDrawing = useRef(false);
+      const modalStartPt = useRef(null);
+
+      const modalGetPos = (e) => { const c = modalPreviewRef.current || modalCanvasRef.current; const r = c.getBoundingClientRect(); const t = e.touches ? e.touches[0] : e; return {x:t.clientX-r.left, y:t.clientY-r.top}; };
+      const modalSnapLine = (p1,p2) => { const dy=Math.abs(p2.y-p1.y), dx=Math.abs(p2.x-p1.x); if(dx>10&&dy<dx*0.15){const y=(p1.y+p2.y)/2; return{x1:p1.x,y1:y,x2:p2.x,y2:y};} return{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y}; };
+      const modalStartDraw = (e) => { e.preventDefault(); modalDrawing.current=true; modalStartPt.current=modalGetPos(e); };
+      const modalMoveDraw = (e) => { if(!modalDrawing.current) return; e.preventDefault(); const pv=modalPreviewRef.current; if(!pv) return; const ctx=pv.getContext('2d'); ctx.clearRect(0,0,pv.width,pv.height); const s=modalSnapLine(modalStartPt.current,modalGetPos(e)); ctx.save(); ctx.strokeStyle=modalEraseMode?'rgba(255,0,0,0.3)':modalMarkerColor; if(modalEraseMode) ctx.setLineDash([6,4]); ctx.lineWidth=modalEraseMode?28:14; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke(); ctx.restore(); };
+      const modalEndDraw = (e) => { if(!modalDrawing.current) return; modalDrawing.current=false; const pv=modalPreviewRef.current; if(pv) pv.getContext('2d').clearRect(0,0,pv.width,pv.height); const refEl=modalPreviewRef.current||modalCanvasRef.current; const ep=e.changedTouches?{x:e.changedTouches[0].clientX-refEl.getBoundingClientRect().left,y:e.changedTouches[0].clientY-refEl.getBoundingClientRect().top}:modalGetPos(e); const c=modalCanvasRef.current; const ctx=c.getContext('2d'); const s=modalSnapLine(modalStartPt.current,ep); if(modalEraseMode){ctx.save();ctx.globalCompositeOperation='destination-out';ctx.lineWidth=28;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(s.x1,s.y1);ctx.lineTo(s.x2,s.y2);ctx.stroke();ctx.restore();}else{ctx.save();ctx.globalCompositeOperation='source-over';ctx.strokeStyle=modalMarkerColor;ctx.lineWidth=14;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(s.x1,s.y1);ctx.lineTo(s.x2,s.y2);ctx.stroke();ctx.restore();} modalStartPt.current=null; if(activeProblem) { try{localStorage.setItem('ar3_mhl_'+activeProblem.catId+'_'+activeProblem.q, c.toDataURL('image/png'));}catch(e){} } };
+      const modalSyncCanvas = () => { const c=modalCanvasRef.current; const img=modalImgRef.current; if(!c||!img) return; const container=img.parentElement; const w=container.scrollWidth||img.clientWidth; const h=container.scrollHeight||img.clientHeight; if(w===0||h===0) return; c.width=w; c.height=h; c.style.width=w+'px'; c.style.height=h+'px'; const pv=modalPreviewRef.current; if(pv){pv.width=w;pv.height=h;pv.style.width=w+'px';pv.style.height=h+'px';} };
+      const modalRestoreCanvas = (p) => { const c=modalCanvasRef.current; if(!c) return; const ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); const d=localStorage.getItem('ar3_mhl_'+p.catId+'_'+p.q); if(d){const im=new window.Image(); im.onload=()=>{ctx.drawImage(im,0,0,c.width,c.height);}; im.src=d;} };
+
+      const openProblem = (p, queueIdx, restoreNotes) => {
+        // imgsがなければデータから検索して補完
+        if (!p.imgs || p.imgs.length === 0) {
+          const found = findProbImgs(p.catId, p.q);
+          if (found) p = { ...p, imgs: found };
+        }
+        if (queueIdx === undefined) setModalQueueIdx(-1);
+        setActiveProblem(p);
+        if (restoreNotes) {
+          // 計算ノートから開いた場合: 過去の書き込みを復元
+          try {
+            const bulkKey = `ar3_notes_${p.catId}`;
+            const bulk = JSON.parse(localStorage.getItem(bulkKey) || '{}');
+            const n = bulk[p.q];
+            setModalRonten(n && n.ronten ? n.ronten : ''); setModalKaiho(n && n.kaiho ? n.kaiho : '');
+          } catch(e) { setModalRonten(''); setModalKaiho(''); }
+        } else {
+          // 今日の復習から開いた場合: 空白で新規アクティブリコール
+          setModalRonten(''); setModalKaiho('');
+          // 過去の書き込みを読み込む
+          try {
+            const histKey = `ar3_history_${p.catId}_${p.q}`;
+            const hist = JSON.parse(localStorage.getItem(histKey) || '[]');
+            setPrevNotes(hist.length > 0 ? { ronten: hist[hist.length-1].ronten||'', kaiho: hist[hist.length-1].kaiho||'' } : null);
+          } catch(e) { setPrevNotes(null); }
+          setShowPrevNotes(false);
+        }
+        setModalMarkerActive(false); setModalEraseMode(false);
+      };
+
+      const saveModalNotes = () => {
+        if (!activeProblem) return;
+        // 個別キーに保存
+        const nk = `ar3_notes_${activeProblem.catId}_${activeProblem.q}`;
+        localStorage.setItem(nk, JSON.stringify({ ronten: modalRonten, kaiho: modalKaiho }));
+        // 計算問題用のオブジェクト形式にも同期保存
+        const bulkKey = `ar3_notes_${activeProblem.catId}`;
+        try {
+          const bulk = JSON.parse(localStorage.getItem(bulkKey) || '{}');
+          if (modalRonten.trim() || modalKaiho.trim()) {
+            bulk[activeProblem.q] = { ronten: modalRonten.trim(), kaiho: modalKaiho.trim() };
+          }
+          localStorage.setItem(bulkKey, JSON.stringify(bulk));
+        } catch(e){}
+      };
+
+      const rateModal = (rating) => {
+        saveModalNotes();
+        const p = activeProblem;
+        // 履歴に追加
+        try {
+          const histKey = `ar3_history_${p.catId}_${p.q}`;
+          const hist = JSON.parse(localStorage.getItem(histKey) || '[]');
+          hist.push({ ronten: modalRonten.trim(), kaiho: modalKaiho.trim(), rating, ratedAt: Date.now() });
+          localStorage.setItem(histKey, JSON.stringify(hist));
+        } catch(e){}
+        const state = getState(p.catId);
+        const key = `${p.q}`;
+        const intervals = { '全然ダメ': 1, '曖昧': 3, '思い出せた': 7, '完璧': null };
+        const days = intervals[rating];
+        if (rating === '完璧') {
+          state[key] = { mastered: true, lastRating: rating, ratedAt: Date.now() };
+        } else {
+          const tomorrow = new Date(); tomorrow.setHours(0,0,0,0); tomorrow.setDate(tomorrow.getDate() + days);
+          state[key] = { nextReview: tomorrow.getTime(), rating, ratedAt: Date.now() };
+        }
+        setState(p.catId, state);
+        // 次の問題へ進む（allDueの中で現在の問題の次を探す）
+        const curIdx = modalQueueIdx >= 0 ? modalQueueIdx : allDue.findIndex(d => d.catId === p.catId && d.q === p.q);
+        const nextIdx = curIdx + 1;
+        if (nextIdx < allDue.length) {
+          const next = allDue[nextIdx];
+          setModalQueueIdx(nextIdx);
+          openProblem(next);
+        } else {
+          setActiveProblem(null);
+          setModalQueueIdx(-1);
+        }
+      };
+
+      const makeNumberedKeyHandler = (getValue, setValue) => (e) => {
+        if (e.key === 'Enter' && e.shiftKey) {
+          e.preventDefault();
+          const ta = e.target;
+          const start = ta.selectionStart;
+          const v = getValue();
+          const lines = v.substring(0, start).split('\n');
+          const nums = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳'];
+          const nextNum = lines.length < nums.length ? nums[lines.length] : '';
+          const insert = '\n' + nextNum;
+          const newVal = v.substring(0, start) + insert + v.substring(ta.selectionEnd);
+          setValue(newVal);
+          setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + insert.length; }, 0);
+        }
+      };
+      const handleKaihoKey = makeNumberedKeyHandler(() => modalKaiho, setModalKaiho);
+      const handleRontenKey = makeNumberedKeyHandler(() => modalRonten, setModalRonten);
+
+      /* ── デイリースケジュール（15分単位ドラッグ選択式） ── */
+      const SCHEDULE_KEY = 'ar3_schedule_' + new Date().toISOString().slice(0,10);
+      const SCHEDULE_TYPES = [
+        { id:'sleep',   label:'睡眠', color:'#3d405b', text:'#fff' },
+        { id:'zaimu',   label:'財務', color:'#e53e3e', text:'#fff' },
+        { id:'kanri',   label:'管理', color:'#e67e22', text:'#fff' },
+        { id:'kansa',   label:'監査', color:'#805ad5', text:'#fff' },
+        { id:'kigyo',   label:'企業', color:'#319795', text:'#fff' },
+      ];
+      const SCHED_SLOTS = 96; // 24h × 4(15分)
+      const SCHED_START = 5;  // 5時スタート
+      const slotToTime = (slot) => { const h = (Math.floor(slot/4) + SCHED_START) % 24; const m = (slot%4)*15; return h + ':' + String(m).padStart(2,'0'); };
+
+      const DailySchedule = () => {
+        const blocksRef = useRef([]);
+        const [blocks, _setBlocks] = useState(() => {
+          try { const v = JSON.parse(localStorage.getItem(SCHEDULE_KEY)) || []; blocksRef.current = v; return v; } catch { return []; }
+        });
+        const setBlocks = (b) => { blocksRef.current = b; _setBlocks(b); localStorage.setItem(SCHEDULE_KEY, JSON.stringify(b)); };
+        const dragRef = useRef({ active:false, start:0, end:0 });
+        const [, forceUpdate] = useState(0);
+        const [menuInfo, setMenuInfo] = useState(null); // {slot_s, slot_e, x}
+        const barRef = useRef(null);
+
+        const getSlotFromX = (clientX) => {
+          if (!barRef.current) return 0;
+          const rect = barRef.current.getBoundingClientRect();
+          const ratio = Math.max(0, Math.min(0.999, (clientX - rect.left) / rect.width));
+          return Math.floor(ratio * SCHED_SLOTS);
+        };
+
+        const onDown = (e) => {
+          if (e.button !== 0) return;
+          e.preventDefault();
+          const s = getSlotFromX(e.clientX);
+          dragRef.current = { active:true, start:s, end:s };
+          setMenuInfo(null);
+          forceUpdate(n => n+1);
+        };
+        const onMove = (e) => {
+          if (!dragRef.current.active) return;
+          dragRef.current.end = getSlotFromX(e.clientX);
+          forceUpdate(n => n+1);
+        };
+        const onUp = (e) => {
+          if (!dragRef.current.active) return;
+          const d = dragRef.current;
+          d.active = false;
+          const s = Math.min(d.start, d.end);
+          const en = Math.max(d.start, d.end) + 1;
+          if (en - s < 1) return;
+          const rect = barRef.current.getBoundingClientRect();
+          const midPct = (s + en) / 2 / SCHED_SLOTS;
+          setMenuInfo({ s, e: en, x: midPct * rect.width });
+          forceUpdate(n => n+1);
+        };
+
+        const selectType = (type) => {
+          if (!menuInfo) return;
+          const nb = { start: menuInfo.s, end: menuInfo.e, type: type.id, label: type.label, color: type.color, text: type.text };
+          let updated = [];
+          blocksRef.current.forEach(b => {
+            if (b.end <= nb.start || b.start >= nb.end) { updated.push(b); return; }
+            if (b.start < nb.start) updated.push({ ...b, end: nb.start });
+            if (b.end > nb.end) updated.push({ ...b, start: nb.end });
+          });
+          updated.push(nb);
+          updated.sort((a,b) => a.start - b.start);
+          setBlocks(updated);
+          setMenuInfo(null);
+        };
+
+        const clearBlock = (idx, e) => {
+          e.stopPropagation(); e.preventDefault();
+          const updated = blocksRef.current.filter((_,i) => i !== idx);
+          setBlocks(updated);
+        };
+
+        const d = dragRef.current;
+        const selMin = d.active ? Math.min(d.start, d.end) : -1;
+        const selMax = d.active ? Math.max(d.start, d.end) : -1;
+
+        // 15分精度の時刻文字列
+        const fmtSlot = (slot) => { const h = (Math.floor(slot/4) + SCHED_START) % 24; const m = (slot%4)*15; return h + ':' + String(m).padStart(2,'0'); };
+        // 勉強時間
+        const fmtDur = (dur) => { const h = Math.floor(dur/4); const m = (dur%4)*15; return h > 0 ? (m > 0 ? h+'h'+m+'m' : h+'h') : m+'m'; };
+
+        return (
+          <div style={{marginBottom:10,position:'relative',userSelect:'none'}}>
+            {/* タイトル行（枠の外） */}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+              <span style={{fontSize:10,fontWeight:700,color:'#fff',letterSpacing:1}}>Today's Schedule</span>
+              {blocks.length > 0 && (
+                <span onClick={() => setBlocks([])} style={{fontSize:8,color:'rgba(255,255,255,.6)',cursor:'pointer',fontWeight:600,padding:'1px 6px',borderRadius:4,border:'1px solid rgba(255,255,255,.3)'}}
+                  onMouseOver={e => {e.currentTarget.style.color='#fff';e.currentTarget.style.borderColor='rgba(255,255,255,.6)';}}
+                  onMouseOut={e => {e.currentTarget.style.color='rgba(255,255,255,.6)';e.currentTarget.style.borderColor='rgba(255,255,255,.3)';}}>全消</span>
+              )}
+            </div>
+            {/* スケジュール本体（枠）— CSS Grid 96列で被り完全防止 */}
+            <div style={{padding:'6px 10px 6px',background:'rgba(255,255,255,.12)',borderRadius:10,backdropFilter:'blur(6px)',border:'1px solid rgba(255,255,255,.2)',position:'relative'}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat('+SCHED_SLOTS+', 1fr)',gridTemplateRows:'14px 40px 14px 16px',rowGap:2}}>
+                {/* Row 1: 勉強時間ラベル */}
+                {blocks.map((b,i) => {
+                  const dur = b.end - b.start;
+                  return (
+                    <div key={'dur'+i} style={{gridColumn:(b.start+1)+'/'+(b.end+1),gridRow:1,textAlign:'center',overflow:'hidden',lineHeight:'14px'}}>
+                      {dur >= 6 && <span style={{fontSize:8,fontWeight:700,color:'#fff'}}>{fmtDur(dur)}</span>}
+                    </div>
+                  );
+                })}
+                {/* Row 2: タイムラインバー（全幅背景） */}
+                <div ref={barRef}
+                  onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp}
+                  onMouseLeave={() => { if(dragRef.current.active){ dragRef.current.active=false; forceUpdate(n=>n+1); } }}
+                  style={{gridColumn:'1/-1',gridRow:2,position:'relative',borderRadius:6,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',cursor:'crosshair',overflow:'hidden'}}>
+                  {Array.from({length:24}).map((_,i) => (
+                    <div key={i} style={{position:'absolute',left:(i*4/SCHED_SLOTS*100)+'%',top:0,bottom:0,width:1,background:i===0?'transparent':'rgba(255,255,255,.06)'}} />
+                  ))}
+                  {blocks.map((b,i) => {
+                    const dur = b.end - b.start;
+                    return (
+                    <div key={i} onMouseDown={e => e.stopPropagation()}
+                      style={{position:'absolute',left:(b.start/SCHED_SLOTS*100)+'%',width:((b.end-b.start)/SCHED_SLOTS*100)+'%',top:0,height:'100%',background:b.color,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:3,zIndex:4,cursor:'pointer',overflow:'hidden'}}
+                      onClick={(e) => { e.stopPropagation(); clearBlock(i,e); }}>
+                      {dur >= 3 && <span style={{fontSize:12,fontWeight:800,color:b.text,whiteSpace:'nowrap',letterSpacing:1,textShadow:'0 1px 3px rgba(0,0,0,.3)'}}>{b.label}</span>}
+                    </div>
+                    );
+                  })}
+                  {d.active && selMin >= 0 && (
+                    <div style={{position:'absolute',left:(selMin/SCHED_SLOTS*100)+'%',width:((selMax-selMin+1)/SCHED_SLOTS*100)+'%',top:0,height:'100%',background:'rgba(255,255,255,.35)',borderRadius:3,zIndex:3,border:'2px solid rgba(255,255,255,.8)',pointerEvents:'none'}}>
+                      <span style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',fontSize:9,color:'#fff',whiteSpace:'nowrap',fontWeight:700,textShadow:'0 1px 3px rgba(0,0,0,.5)'}}>{fmtSlot(selMin)}〜{fmtSlot(selMax+1)}</span>
+                    </div>
+                  )}
+                </div>
+                {/* Row 3: 開始〜終了時刻 */}
+                {blocks.map((b,i) => {
+                  const dur = b.end - b.start;
+                  return (
+                    <div key={'time'+i} style={{gridColumn:(b.start+1)+'/'+(b.end+1),gridRow:3,display:'flex',justifyContent:'space-between',overflow:'hidden',lineHeight:'14px',padding:'0 1px'}}>
+                      {dur >= 6 ? (<><span style={{fontSize:8,fontWeight:700,color:'#fff'}}>{fmtSlot(b.start)}</span><span style={{fontSize:8,fontWeight:700,color:'#fff'}}>{fmtSlot(b.end)}</span></>) : null}
+                    </div>
+                  );
+                })}
+                {/* Row 4: 時刻目盛り */}
+                {Array.from({length:24}).map((_,i) => (
+                  <div key={'h'+i} style={{gridColumn:(i*4+1)+'/'+(i*4+5),gridRow:4,textAlign:'left',lineHeight:'16px'}}>
+                    {(i % 2 === 0) && <span style={{fontSize:10,color:'#fff',fontWeight:700}}>{(i + SCHED_START) % 24}</span>}
+                  </div>
+                ))}
+              </div>
+              {/* 科目選択メニュー（grid外にabsolute） */}
+              {menuInfo && (
+                <div onMouseDown={e => e.stopPropagation()} style={{position:'absolute',left:((menuInfo.s+menuInfo.e)/2/SCHED_SLOTS*100)+'%',top:8,transform:'translate(-50%,-100%)',background:'#1a202c',borderRadius:8,padding:'5px 6px',display:'flex',gap:4,zIndex:10,boxShadow:'0 4px 20px rgba(0,0,0,.5)',border:'1px solid rgba(255,255,255,.25)'}}>
+                  <span style={{fontSize:8,color:'rgba(255,255,255,.5)',alignSelf:'center',marginRight:2}}>{fmtSlot(menuInfo.s)}〜{fmtSlot(menuInfo.e)}</span>
+                  {SCHEDULE_TYPES.map(t => (
+                    <div key={t.id} onClick={(e) => { e.stopPropagation(); selectType(t); }}
+                      style={{background:t.color,color:t.text,fontSize:10,fontWeight:700,padding:'4px 10px',borderRadius:5,cursor:'pointer',transition:'transform .1s',whiteSpace:'nowrap'}}
+                      onMouseOver={e => e.currentTarget.style.transform='scale(1.1)'}
+                      onMouseOut={e => e.currentTarget.style.transform='scale(1)'}>
+                      {t.label}
+                    </div>
+                  ))}
+                  <div onClick={(e) => { e.stopPropagation(); setMenuInfo(null); }}
+                    style={{color:'rgba(255,255,255,.5)',fontSize:10,padding:'4px 5px',cursor:'pointer',display:'flex',alignItems:'center'}}>✕</div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      /* 楕円の科目ボタン（ガラスモーフィズム） */
+      const CatBtn = ({ cat }) => {
+        const t = THEME_MAP[cat.color] || THEME_MAP.blue;
+        return (
+          <div onClick={() => onSelect(cat)}
+            style={{background:'rgba(255,255,255,.2)',border:'2px solid rgba(255,255,255,.45)',borderRadius:'50%',width:115,height:56,cursor:'pointer',transition:'all .18s',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,backdropFilter:'blur(6px)',boxShadow:'0 2px 12px rgba(0,0,0,.08)'}}
+            onMouseOver={e => { e.currentTarget.style.background='rgba(255,255,255,.85)'; e.currentTarget.style.borderColor=t.accent; e.currentTarget.querySelector('.cat-label').style.color=t.accent; }}
+            onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,.2)'; e.currentTarget.style.borderColor='rgba(255,255,255,.45)'; e.currentTarget.querySelector('.cat-label').style.color='#fff'; }}>
+            <span className="cat-label" style={{fontWeight:700,fontSize:12,color:'#fff',transition:'color .15s',textAlign:'center',lineHeight:1.2,textShadow:'0 1px 3px rgba(0,0,0,.15)'}}>{cat.name}</span>
+          </div>
+        );
+      };
+
+      return (
+        <div style={{minHeight:'100vh',position:'relative',overflow:'hidden',zoom:'125%'}}>
+          {/* 背景グラデーション */}
+          <div className="top-bg" />
+          <div className="top-content" style={{minHeight:'100vh',padding:'10px 16px',display:'flex',flexDirection:'column'}}>
+          <div style={{maxWidth:1000,margin:'0 auto',width:'100%',display:'flex',flexDirection:'column',flex:1,minHeight:0}}>
+
+            {/* ── タイトル ── */}
+            <div style={{textAlign:'center',marginBottom:10}}>
+              <h1 style={{fontSize:22,fontWeight:800,color:'#fff',margin:0,letterSpacing:3,textShadow:'0 1px 8px rgba(0,0,0,.15)'}}>Active Recall Study</h1>
+              <p style={{fontSize:11,color:'rgba(255,255,255,.75)',margin:'2px 0 0',letterSpacing:2}}>公認会計士試験対策</p>
+            </div>
+
+            {/* ── デイリースケジュール ── */}
+            <DailySchedule />
+
+            {/* ── メインエリア: 左(科目) + 中(今日の問題) + 右(ToDo+メモ) ── */}
+            <div style={{display:'flex',gap:16,flex:1,minHeight:0,alignItems:'flex-start'}}>
+
+              {/* 左列: 6科目を縦に楕円で + 評価件数 */}
+              <div style={{display:'flex',flexDirection:'column',gap:6,justifyContent:'flex-start',alignItems:'center',flexShrink:0}}>
+                {CATEGORIES.map(cat => <CatBtn key={cat.id} cat={cat} />)}
+                {/* 評価件数表示 */}
+                {(() => { const c = getRatingCounts(); return (
+                  <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:3,alignItems:'flex-start'}}>
+                    {[
+                      {label:'また明日',color:'#e53e3e'},
+                      {label:'3日後',color:'#dd6b20'},
+                      {label:'7日後',color:'#3182ce'},
+                    ].map(r => (
+                      <div key={r.label} style={{display:'flex',alignItems:'center',gap:5}}>
+                        <span style={{width:8,height:8,borderRadius:'50%',background:r.color,display:'inline-block',flexShrink:0}} />
+                        <span style={{fontSize:10,color:'rgba(255,255,255,.85)',fontWeight:600,width:58,display:'inline-block'}}>{r.label}</span>
+                        <span style={{fontSize:11,color:'#fff',fontWeight:700,width:16,textAlign:'right',display:'inline-block'}}>{c[r.label]}</span>
+                      </div>
+                    ))}
+                  </div>
+                ); })()}
+              </div>
+
+              {/* 中央: 今日とくべき問題リスト */}
+              <div style={{flex:1.5,display:'flex',flexDirection:'column',minHeight:0,overflowY:'auto',gap:5}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#fff',letterSpacing:1,marginBottom:2}}>今日の復習 ({allDue.length})</div>
+                {allDue.length === 0 && <div style={{textAlign:'center',fontSize:12,color:'rgba(255,255,255,.7)',padding:20}}>今日の復習問題はありません</div>}
+                {allDue.slice(0,15).map((p,i) => {
+                  const t = THEME_MAP[p.catColor] || THEME_MAP.blue;
+                  const st = getState(p.catId)[`${p.q}`] || {};
+                  const ratingColors = {'全然ダメ':'#e53e3e','曖昧':'#dd6b20','思い出せた':'#3182ce','完璧':'#38a169'};
+                  const rc = ratingColors[st.rating] || '#dd6b20';
+                  const daysAgo = st.ratedAt ? Math.floor((Date.now() - st.ratedAt) / 86400000) : null;
+                  const info = getProbInfo(p.catId, p.q, getCatData(p.catId));
+                  return (
+                    <div key={p.q+i} onClick={() => { onStartRecall({ problem: p, allDue, startIdx: i }); }}
+                      style={{display:'flex',alignItems:'center',gap:5,padding:'6px 10px',background:'rgba(255,255,255,.85)',border:'1.5px solid rgba(255,255,255,.5)',borderRadius:10,cursor:'pointer',transition:'all .15s',backdropFilter:'blur(4px)'}}
+                      onMouseOver={e => { e.currentTarget.style.background='rgba(255,255,255,.95)'; e.currentTarget.style.borderColor=t.accent; }}
+                      onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,.85)'; e.currentTarget.style.borderColor='rgba(255,255,255,.5)'; }}>
+                      <span style={{width:9,height:9,borderRadius:'50%',background:rc,display:'inline-block',flexShrink:0}} />
+                      <span style={{fontSize:10,fontWeight:700,color:'#2d3748',flexShrink:0}}>{p.q}</span>
+                      {info && <span style={{fontSize:9,color:'#718096',flexShrink:0}}>{info.vol}{info.tcCircled ? ' 第'+info.tcCircled+'章' : ''}</span>}
+                      {info && info.chName && <span style={{fontSize:9,color:'#4a5568',fontWeight:600,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{info.chName}</span>}
+                      {daysAgo !== null && <span style={{fontSize:8,color:'#a0aec0',flexShrink:0,fontWeight:600}}>{daysAgo === 0 ? '今日' : daysAgo+'日前'}</span>}
+                      <span style={{fontSize:8,color:'#fff',background:t.accent,borderRadius:3,padding:'1px 5px',flexShrink:0,fontWeight:700}}>{p.catName.replace(/（.*）/,'')}</span>
+                    </div>
+                  );
+                })}
+                {allDue.length > 15 && <div style={{textAlign:'center',fontSize:11,color:'rgba(255,255,255,.7)'}}>他 {allDue.length - 15} 問</div>}
+
+                {/* 計算ノート一覧（4択判定済みのみ） */}
+                {(() => {
+                  const calcCats = CATEGORIES.filter(c => c.hasData && c.data);
+                  const allNotes = [];
+                  calcCats.forEach(cat => {
+                    const st = getState(cat.id);
+                    let notes = {};
+                    try { notes = JSON.parse(localStorage.getItem(`ar3_notes_${cat.id}`) || '{}'); } catch(e){}
+                    Object.entries(st).forEach(([q, s]) => {
+                      if (!(s.rating || s.mastered)) return;
+                      const n = notes[q] || {};
+                      /* メモ(ronten/kaiho)が書かれていない問題はスキップ */
+                      const hasHistory = (() => { try { const h = JSON.parse(localStorage.getItem(`ar3_history_${cat.id}_${q}`) || '[]'); return h.some(e => (e.ronten && e.ronten.trim()) || (e.kaiho && e.kaiho.trim())); } catch(e){ return false; } })();
+                      if (!(n.ronten || n.kaiho || hasHistory)) return;
+                      /* 今日の復習に出ている問題は除外 */
+                      if (allDue.some(d => d.catId === cat.id && d.q === q)) return;
+                      const prob = cat.data.flatMap(ch => ch.problems || []).find(p => p.q === q);
+                      const ratingColors = {'全然ダメ':'#e53e3e','曖昧':'#dd6b20','思い出せた':'#3182ce','完璧':'#38a169'};
+                      const rc = ratingColors[s.rating || s.lastRating] || '#38a169';
+                      const daysAgo = s.ratedAt ? Math.floor((Date.now() - s.ratedAt) / 86400000) : null;
+                      allNotes.push({ q, catId: cat.id, catName: cat.name, catColor: cat.color, ronten: n.ronten || '', kaiho: n.kaiho || '', chapter: prob?.chapter || q, imgs: prob?.imgs, rc, daysAgo, rating: s.rating || s.lastRating || '完璧' });
+                    });
+                  });
+                  allNotes.sort((a, b) => {
+                    const da = a.daysAgo !== null ? a.daysAgo : 9999;
+                    const db = b.daysAgo !== null ? b.daysAgo : 9999;
+                    return da - db;
+                  });
+                  if (allNotes.length === 0) return null;
+                  return (
+                    <div style={{marginTop:8}}>
+                      <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,.8)',marginBottom:4,letterSpacing:1}}>計算ノート ({allNotes.length})</div>
+                      {allNotes.slice(0,10).map((n,i) => {
+                        const t = THEME_MAP[n.catColor] || THEME_MAP.red;
+                        const noteKey = n.catId + '_' + n.q;
+                        const isExpanded = expandedNoteId === noteKey;
+                        const isDueToday = allDue.some(d => d.catId === n.catId && d.q === n.q);
+                        return (
+                          <div key={n.q+i}
+                            style={{marginBottom:3,background:'rgba(255,255,255,.85)',border:isExpanded ? '1.5px solid '+t.accent : '1.5px solid rgba(255,255,255,.5)',borderRadius:8,cursor:'pointer',transition:'all .15s',overflow:'hidden'}}
+                            onMouseOver={e => { e.currentTarget.style.background='rgba(255,255,255,.95)'; if(!isExpanded) e.currentTarget.style.borderColor=t.accent; }}
+                            onMouseOut={e => { e.currentTarget.style.background='rgba(255,255,255,.85)'; if(!isExpanded) e.currentTarget.style.borderColor='rgba(255,255,255,.5)'; }}>
+                            <div onClick={() => {
+                              if (isDueToday) { const dueIdx = allDue.findIndex(d => d.catId === n.catId && d.q === n.q); onStartRecall({ problem: n, allDue, startIdx: dueIdx >= 0 ? dueIdx : 0 }); }
+                              else { setExpandedNoteId(isExpanded ? null : noteKey); }
+                            }}
+                              style={{display:'flex',alignItems:'center',gap:6,padding:'5px 10px'}}>
+                            {(() => { const info = getProbInfo(n.catId, n.q, getCatData(n.catId)); return (<>
+                              <span style={{width:9,height:9,borderRadius:'50%',background:n.rc,display:'inline-block',flexShrink:0}} />
+                              <span style={{fontSize:9,fontWeight:700,color:'#2d3748',flexShrink:0}}>{n.q}</span>
+                              {info && <span style={{fontSize:8,color:'#718096',flexShrink:0}}>{info.vol}{info.tcCircled ? ' 第'+info.tcCircled+'章' : ''}</span>}
+                              {info && info.chName && <span style={{fontSize:8,color:'#4a5568',fontWeight:600,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{info.chName}</span>}
+                              {n.daysAgo !== null && <span style={{fontSize:8,color:'#a0aec0',flexShrink:0,fontWeight:600}}>{n.daysAgo === 0 ? '今日' : n.daysAgo+'日前'}</span>}
+                              <span style={{fontSize:8,fontWeight:700,color:'#fff',background:t.accent,borderRadius:3,padding:'1px 4px',flexShrink:0}}>{n.catName.replace(/（.*）/,'').slice(0,2)}</span>
+                              {!isDueToday && <span style={{fontSize:10,color:'#a0aec0',flexShrink:0,transform:isExpanded?'rotate(180deg)':'rotate(0deg)',transition:'transform .2s'}}>▼</span>}
+                            </>); })()}
+                            </div>
+                            {isExpanded && (() => {
+                              const ratingColors = {'全然ダメ':'#e53e3e','曖昧':'#dd6b20','思い出せた':'#3182ce','完璧':'#38a169'};
+                              const ratingLabels = {'全然ダメ':'また明日','曖昧':'3日後','思い出せた':'7日後','完璧':'OK'};
+                              let hist = [];
+                              try { hist = JSON.parse(localStorage.getItem(`ar3_history_${n.catId}_${n.q}`) || '[]'); } catch(e){}
+                              // 履歴がなければ既存ノート＋state評価から補完
+                              if (hist.length === 0 && (n.ronten || n.kaiho || n.rating)) {
+                                const st = getState(n.catId);
+                                const s = st[n.q] || {};
+                                hist = [{ ronten: n.ronten || '', kaiho: n.kaiho || '', rating: s.rating || s.lastRating || n.rating, ratedAt: s.ratedAt || Date.now() }];
+                                // 自動補完した履歴を保存
+                                try { localStorage.setItem(`ar3_history_${n.catId}_${n.q}`, JSON.stringify(hist)); } catch(e){}
+                              }
+                              return (
+                                <div style={{padding:'6px 10px 8px 15px',borderTop:'1px solid rgba(0,0,0,.06)',maxHeight:200,overflowY:'auto'}}>
+                                  {hist.length > 0 ? hist.slice().reverse().map((h,hi) => {
+                                    const d = new Date(h.ratedAt);
+                                    const dateStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+                                    const rc = ratingColors[h.rating] || '#a0aec0';
+                                    return (
+                                      <div key={hi} style={{marginBottom:5,paddingBottom:5,borderBottom:hi<hist.length-1?'1px dashed rgba(0,0,0,.08)':'none'}}>
+                                        <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2}}>
+                                          <span style={{fontSize:8,color:'#fff',background:rc,borderRadius:3,padding:'1px 5px',fontWeight:700}}>{ratingLabels[h.rating] || h.rating}</span>
+                                          <span style={{fontSize:8,color:'#a0aec0'}}>{dateStr}</span>
+                                          {hi===0 && <span style={{fontSize:7,color:t.accent,fontWeight:700}}>最新</span>}
+                                        </div>
+                                        {h.ronten && <div style={{fontSize:9,color:'#4a5568',lineHeight:1.4,whiteSpace:'pre-wrap'}}>📝 {h.ronten}</div>}
+                                        {h.kaiho && <div style={{fontSize:9,color:'#718096',lineHeight:1.4,whiteSpace:'pre-wrap'}}>📋 {h.kaiho}</div>}
+                                        {!h.ronten && !h.kaiho && <div style={{fontSize:8,color:'#cbd5e0'}}>メモなし</div>}
+                                      </div>
+                                    );
+                                  }) : (
+                                    <div style={{fontSize:9,color:'#a0aec0',marginBottom:4}}>まだ解いていません</div>
+                                  )}
+                                  <div style={{marginTop:4,display:'flex',gap:4}}>
+                                    <button onClick={(e) => { e.stopPropagation(); const imgs = n.imgs || findProbImgs(n.catId, n.q); openProblem({q:n.q, catId:n.catId, catName:n.catName, catColor:n.catColor, chapter:n.chapter, imgs:imgs}, undefined, true); }}
+                                      style={{padding:'3px 10px',background:t.accent,color:'#fff',border:'none',borderRadius:5,fontSize:9,fontWeight:700,cursor:'pointer'}}>開く</button>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        );
+                      })}
+                      {allNotes.length > 10 && <div style={{textAlign:'center',fontSize:10,color:'rgba(255,255,255,.6)'}}>他 {allNotes.length - 10} 件</div>}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* 右列: ToDoList + メモ */}
+              <div style={{flex:.7,display:'flex',flexDirection:'column',gap:6,minHeight:0,maxWidth:240}}>
+                <TodoPanel storageKey={dayKey} style={{flex:5,overflow:'hidden',background:'rgba(255,255,255,.9)',backdropFilter:'blur(8px)',border:'1.5px solid rgba(255,255,255,.5)'}} />
+                <MemoPanel storageKey={memoKey} title="メモ" placeholder="自由メモ..." style={{flex:1,minHeight:50,overflow:'hidden',background:'rgba(255,255,255,.9)',backdropFilter:'blur(8px)',border:'1.5px solid rgba(255,255,255,.5)'}} />
+              </div>
+            </div>
+
+
+          </div>
+          </div>
+
+        </div>
+      );
+    };
+
+    const CalculationStudy = ({ category, onBack }) => {
+      const [problems] = useState(category.data);
+      const [filtered, setFiltered] = useState([]);
+      const [currentIdx, setCurrentIdx] = useState(0);
+      const [chapters, setChapters] = useState([]);
+      const [selectedChapter, setSelectedChapter] = useState(null);
+      const [expandedChapter, setExpandedChapter] = useState(null);
+      const [ronten, setRonten] = useState('');
+      const [kaiho, setKaiho] = useState('');
+      const [showChBar, setShowChBar] = useState(false);
+      const [markerColor, setMarkerColor] = useState('rgba(255,255,0,0.3)');
+      const [eraseMode, setEraseMode] = useState(false);
+      const [lineWidth, setLineWidth] = useState(14);
+      const [highlights, setHighlights] = useState({});
+      const [markerActive, setMarkerActive] = useState(false);
+      const canvasRef = React.useRef(null);
+      const previewRef = React.useRef(null);
+      const imgRef = React.useRef(null);
+      const drawing = React.useRef(false);
+      const startPt = React.useRef(null);
+
+      // iPad P2P sync
+      const [ipadConnected, setIpadConnected] = useState(false);
+      const [ipadCode, setIpadCode] = useState('');
+      const [showIpadPanel, setShowIpadPanel] = useState(false);
+      const peerRef = React.useRef(null);
+      const connRef = React.useRef(null);
+      const ipadCanvasRef = React.useRef(null);
+
+      // iPad連携: ホスト(PC)としてPeerを作成
+      const startIpadSync = () => {
+        const code = String(Math.floor(1000 + Math.random() * 9000));
+        setIpadCode(code);
+        setShowIpadPanel(true);
+        if (peerRef.current) { try { peerRef.current.destroy(); } catch(e){} }
+        const hostId = 'cpa-host-' + code;
+        const p = new Peer(hostId);
+        peerRef.current = p;
+        p.on('open', () => { console.log('PeerJS host ready:', hostId); });
+        p.on('connection', (c) => {
+          connRef.current = c;
+          c.on('open', () => {
+            setIpadConnected(true);
+            // 現在の問題を送信
+            if (filtered.length > 0) {
+              const cur = filtered[currentIdx];
+              const fullImgs = (cur.imgs||[]).map(s => s.startsWith('http') ? s : window.location.origin + '/' + s);
+              c.send({ type: 'problem', q: cur.q, label: cur.chapter + ' ' + cur.q, imgs: fullImgs });
+              // 既存のiPad書き込みデータを送信
+              const data = localStorage.getItem('ar3_ipad_' + category.id + '_' + cur.q);
+              if (data) c.send({ type: 'existing-strokes', dataUrl: data });
+            }
+          });
+          c.on('data', (data) => handleIpadData(data));
+          c.on('close', () => { setIpadConnected(false); connRef.current = null; });
+        });
+        p.on('error', (err) => { console.error('PeerJS error:', err); });
+      };
+
+      const stopIpadSync = () => {
+        if (peerRef.current) { try { peerRef.current.destroy(); } catch(e){} peerRef.current = null; }
+        connRef.current = null;
+        setIpadConnected(false);
+        setIpadCode('');
+        setShowIpadPanel(false);
+      };
+
+      // iPadからのデータ受信
+      const handleIpadData = (data) => {
+        if (data.type === 'canvas-data' && data.dataUrl) {
+          // iPadからキャンバスデータ受信 → ipadCanvasに描画 + localStorage保存
+          const ic = ipadCanvasRef.current;
+          if (ic) {
+            const ictx = ic.getContext('2d');
+            ictx.clearRect(0, 0, ic.width, ic.height);
+            const img2 = new window.Image();
+            img2.onload = () => { ictx.drawImage(img2, 0, 0, ic.width, ic.height); };
+            img2.src = data.dataUrl;
+          }
+          if (filtered.length > 0) {
+            const cur = filtered[currentIdx];
+            try { localStorage.setItem('ar3_ipad_' + category.id + '_' + cur.q, data.dataUrl); } catch(e){}
+          }
+        }
+        if (data.type === 'request-strokes') {
+          const stored = localStorage.getItem('ar3_ipad_' + category.id + '_' + data.q);
+          if (stored && connRef.current && connRef.current.open) {
+            connRef.current.send({ type: 'existing-strokes', dataUrl: stored });
+          }
+        }
+        if (data.type === 'clear') {
+          const ic = ipadCanvasRef.current;
+          if (ic) { ic.getContext('2d').clearRect(0, 0, ic.width, ic.height); }
+          if (filtered.length > 0) {
+            localStorage.removeItem('ar3_ipad_' + category.id + '_' + filtered[currentIdx].q);
+          }
+        }
+      };
+
+      // 問題切替時にiPadに通知 + iPad書き込み復元
+      const notifyIpadProblemChange = (prob) => {
+        if (connRef.current && connRef.current.open) {
+          const fi = (prob.imgs||[]).map(s => s.startsWith('http') ? s : window.location.origin + '/' + s);
+          connRef.current.send({ type: 'problem', q: prob.q, label: prob.chapter + ' ' + prob.q, imgs: fi });
+          const data = localStorage.getItem('ar3_ipad_' + category.id + '_' + prob.q);
+          if (data) connRef.current.send({ type: 'existing-strokes', dataUrl: data });
+        }
+        // ipadCanvas復元
+        setTimeout(() => {
+          const ic = ipadCanvasRef.current;
+          if (!ic) return;
+          const img2 = imgRef.current;
+          if (img2) { ic.width = img2.clientWidth; ic.height = img2.clientHeight; ic.style.width = img2.clientWidth + 'px'; ic.style.height = img2.clientHeight + 'px'; }
+          const ictx = ic.getContext('2d');
+          ictx.clearRect(0, 0, ic.width, ic.height);
+          const stored = localStorage.getItem('ar3_ipad_' + category.id + '_' + prob.q);
+          if (stored) {
+            const im = new window.Image();
+            im.onload = () => { ictx.drawImage(im, 0, 0, ic.width, ic.height); };
+            im.src = stored;
+          }
+        }, 200);
+      };
+
+      // cleanup on unmount
+      useEffect(() => { return () => { if (peerRef.current) { try { peerRef.current.destroy(); } catch(e){} } }; }, []);
+
+      const hlKey = (qId) => `ar3_hl_${category.id}_${qId}`;
+      const saveHighlights = (qId, dataUrl) => {
+        try { localStorage.setItem(hlKey(qId), dataUrl); } catch(e) {}
+      };
+      const loadHighlightData = (qId) => {
+        return localStorage.getItem(hlKey(qId)) || null;
+      };
+      const clearHighlights = (qId) => {
+        localStorage.removeItem(hlKey(qId));
+        const c = canvasRef.current;
+        if (c) { const ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height); }
+      };
+
+      const syncCanvas = () => {
+        const c = canvasRef.current;
+        const pv = previewRef.current;
+        const img = imgRef.current;
+        if (!c || !img) return;
+        const w = img.clientWidth;
+        const h = img.clientHeight;
+        if (w === 0 || h === 0) return;
+        c.width = w; c.height = h;
+        c.style.width = w + 'px'; c.style.height = h + 'px';
+        if (pv) { pv.width = w; pv.height = h; pv.style.width = w + 'px'; pv.style.height = h + 'px'; }
+      };
+
+      const restoreCanvas = (qId) => {
+        const c = canvasRef.current;
+        if (!c) return;
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, c.width, c.height);
+        const data = loadHighlightData(qId);
+        if (data) {
+          const img2 = new window.Image();
+          img2.onload = () => { ctx.drawImage(img2, 0, 0, c.width, c.height); };
+          img2.src = data;
+        }
+      };
+
+      const getPos = (e) => {
+        const c = canvasRef.current;
+        const rect = c.getBoundingClientRect();
+        const t = e.touches ? e.touches[0] : e;
+        return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+      };
+      const snapLine = (p1, p2) => {
+        /* Y座標の差が小さければ水平に補正 */
+        const dy = Math.abs(p2.y - p1.y);
+        const dx = Math.abs(p2.x - p1.x);
+        if (dx > 10 && dy < dx * 0.15) {
+          const avgY = (p1.y + p2.y) / 2;
+          return { x1: p1.x, y1: avgY, x2: p2.x, y2: avgY };
+        }
+        if (dy > 10 && dx < dy * 0.15) {
+          const avgX = (p1.x + p2.x) / 2;
+          return { x1: avgX, y1: p1.y, x2: avgX, y2: p2.y };
+        }
+        return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+      };
+      const drawPreview = (p1, p2) => {
+        const pv = previewRef.current;
+        if (!pv) return;
+        const ctx = pv.getContext('2d');
+        ctx.clearRect(0, 0, pv.width, pv.height);
+        const s = snapLine(p1, p2);
+        if (eraseMode) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,0,0,0.3)';
+          ctx.setLineDash([6, 4]);
+          ctx.lineWidth = lineWidth + 14;
+          ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke();
+          ctx.restore();
+        } else {
+          ctx.save();
+          ctx.strokeStyle = markerColor;
+          ctx.lineWidth = lineWidth;
+          ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke();
+          ctx.restore();
+        }
+      };
+      const startDraw = (e) => {
+        e.preventDefault();
+        drawing.current = true;
+        startPt.current = getPos(e);
+      };
+      const moveDraw = (e) => {
+        if (!drawing.current) return;
+        e.preventDefault();
+        drawPreview(startPt.current, getPos(e));
+      };
+      const endDraw = (e) => {
+        if (!drawing.current) return;
+        drawing.current = false;
+        const pv = previewRef.current;
+        if (pv) { pv.getContext('2d').clearRect(0, 0, pv.width, pv.height); }
+        const endPt = e.changedTouches ? { x: 0, y: 0 } : getPos(e);
+        if (e.changedTouches) {
+          const t = e.changedTouches[0];
+          const rect = canvasRef.current.getBoundingClientRect();
+          endPt.x = t.clientX - rect.left;
+          endPt.y = t.clientY - rect.top;
+        }
+        const c = canvasRef.current;
+        const ctx = c.getContext('2d');
+        const s = snapLine(startPt.current, endPt);
+        if (eraseMode) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.lineWidth = lineWidth + 14;
+          ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke();
+          ctx.restore();
+        } else {
+          ctx.save();
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.strokeStyle = markerColor;
+          ctx.lineWidth = lineWidth;
+          ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke();
+          ctx.restore();
+        }
+        startPt.current = null;
+        if (c && filtered[currentIdx]) {
+          saveHighlights(filtered[currentIdx].q, c.toDataURL('image/png'));
+        }
+      };
+
+      const getNotesKey = (catId) => `ar3_notes_${catId}`;
+      const getNotes = (catId) => {
+        const d = localStorage.getItem(getNotesKey(catId));
+        return d ? JSON.parse(d) : {};
+      };
+      const saveNotes = (catId, notes) => {
+        localStorage.setItem(getNotesKey(catId), JSON.stringify(notes));
+      };
+
+      const loadNotes = (prob) => {
+        const notes = getNotes(category.id);
+        const n = notes[prob.q] || {};
+        setRonten(n.ronten || '');
+        setKaiho(n.kaiho || '');
+        setTimeout(() => { syncCanvas(); restoreCanvas(prob.q); }, 100);
+        notifyIpadProblemChange(prob);
+      };
+
+      const persistNotes = () => {
+        const p = filtered[currentIdx];
+        if (!p) return;
+        const notes = getNotes(category.id);
+        if (ronten.trim() || kaiho.trim()) {
+          notes[p.q] = { ronten: ronten.trim(), kaiho: kaiho.trim() };
+        } else {
+          delete notes[p.q];
+        }
+        saveNotes(category.id, notes);
+      };
+
+      const isCalc = category.id === 'zaimu-keisan' || category.id === 'kanri-keisan';
+      const gradMap = {
+        red:    'linear-gradient(135deg, #c53030 0%, #e53e3e 30%, #fc8181 60%, #feb2b2 100%)',
+        orange: 'linear-gradient(135deg, #c05621 0%, #dd6b20 30%, #f6ad55 60%, #fbd38d 100%)',
+      };
+      const calcGrad = gradMap[category.color] || '';
+
+      useEffect(() => {
+        applyTheme(category.color);
+        return () => resetTheme();
+      }, [category.color]);
+
+      const locked = isLockedByZenzenDame(category.id);
+
+      useEffect(() => {
+        const uniqueChapters = [...new Set(problems.map(p => p.chapter))];
+        setChapters(uniqueChapters);
+        const due = getDueProblems(category.id, problems);
+        if (locked && due.length > 0) {
+          /* ロック中: 復習問題のみ */
+          setFiltered(shuffle(due));
+          if (due.length > 0) loadNotes(due[0]);
+        } else {
+          const list = shuffle(due.length > 0 ? due : problems);
+          setFiltered(list);
+          if (list.length > 0) loadNotes(list[0]);
+        }
+      }, [problems, category.id]);
+
+      useEffect(() => {
+        const onResize = () => {
+          const c = canvasRef.current; const img = imgRef.current;
+          if (!c || !img) return;
+          const prev = c.toDataURL('image/png');
+          syncCanvas();
+          if (prev && prev.length > 100) {
+            const ctx = c.getContext('2d');
+            const tmp = new window.Image();
+            tmp.onload = () => { ctx.drawImage(tmp, 0, 0, c.width, c.height); };
+            tmp.src = prev;
+          }
+        };
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+      }, []);
+
+      const filterByChapter = (chapter) => {
+        persistNotes();
+        setSelectedChapter(chapter);
+        setExpandedChapter(null);
+        const chapterProblems = problems.filter(p => p.chapter === chapter);
+        const due = getDueProblems(category.id, chapterProblems);
+        const list = shuffle(due.length > 0 ? due : chapterProblems);
+        setFiltered(list);
+        setCurrentIdx(0);
+        if (list.length > 0) loadNotes(list[0]);
+      };
+
+      const goToProblem = (prob) => {
+        persistNotes();
+        setSelectedChapter(prob.chapter);
+        setExpandedChapter(null);
+        setFiltered([prob]);
+        setCurrentIdx(0);
+        loadNotes(prob);
+      };
+
+      const toggleChapter = (ch) => {
+        setExpandedChapter(expandedChapter === ch ? null : ch);
+      };
+
+      const getChapterNum = (ch) => {
+        const m = ch.match(/第(\d+)章/);
+        return m ? parseInt(m[1]) : 999;
+      };
+
+      const sortedChapters = [...chapters].sort((a, b) => getChapterNum(a) - getChapterNum(b));
+
+      const rateAnswer = (rating) => {
+        persistNotes();
+        const p = filtered[currentIdx];
+        // 履歴に追加
+        try {
+          const histKey = `ar3_history_${category.id}_${p.q}`;
+          const hist = JSON.parse(localStorage.getItem(histKey) || '[]');
+          hist.push({ ronten: ronten.trim(), kaiho: kaiho.trim(), rating, ratedAt: Date.now() });
+          localStorage.setItem(histKey, JSON.stringify(hist));
+        } catch(e){}
+        const state = getState(category.id);
+        const key = `${p.q}`;
+
+        const intervals = { '全然ダメ': 1, '曖昧': 3, '思い出せた': 7, '完璧': null };
+        const days = intervals[rating];
+
+        if (rating === '完璧') {
+          state[key] = { mastered: true, lastRating: rating, ratedAt: new Date().getTime() };
+        } else {
+          const tomorrow = new Date(); tomorrow.setHours(0,0,0,0); tomorrow.setDate(tomorrow.getDate() + days);
+          state[key] = { nextReview: tomorrow.getTime(), rating, ratedAt: new Date().getTime() };
+        }
+
+        setState(category.id, state);
+
+        if (currentIdx < filtered.length - 1) {
+          const nextIdx = currentIdx + 1;
+          setCurrentIdx(nextIdx);
+          loadNotes(filtered[nextIdx]);
+        } else {
+          // 全問終了 → シャッフルして最初から連続
+          const newList = shuffle([...problems]);
+          setFiltered(newList);
+          setCurrentIdx(0);
+          setSelectedChapter(null);
+          if (newList.length > 0) loadNotes(newList[0]);
+        }
+      };
+
+      if (filtered.length === 0) {
+        return (
+          <div className="min-h-screen bg-gray-50 p-4">
+            <div style={{maxWidth:1600,margin:'0 auto'}}>
+              <button onClick={onBack} className="px-4 py-2 bg-gray-400 text-white rounded mb-4">戻る</button>
+              <div className="p-6 bg-white rounded-lg text-center">
+                <p className="text-gray-600 mb-4">対象の問題がありません</p>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      const current = filtered[currentIdx];
+
+      return (
+        <div style={{background: isCalc ? calcGrad : 'var(--bg)',height:'100vh',overflow:'hidden',padding:'6px 10px',display:'flex',flexDirection:'column',position:'relative'}}>
+          {/* Top bar */}
+          <div className="top-bar">
+            <button onClick={() => { persistNotes(); onBack(); }} style={{padding:'5px 12px',background:'var(--accent)',color:'#fff',borderRadius:6,fontWeight:700,fontSize:12,border:'none',cursor:'pointer',whiteSpace:'nowrap'}}>戻る</button>
+            <button className="toggle-btn" onClick={() => setShowChBar(!showChBar)} style={{padding:'4px 10px',background:'var(--card)',border:'1.5px solid var(--border)',borderRadius:6,cursor:'pointer',fontSize:12,fontWeight:700,color:showChBar?'var(--accent)':'var(--text2)',whiteSpace:'nowrap'}}>
+              {showChBar ? '章▲' : '章▼'}
+            </button>
+            <button
+              onClick={() => { persistNotes(); setSelectedChapter(null); setExpandedChapter(null); const due = getDueProblems(category.id, problems); const list = shuffle(due.length > 0 ? due : problems); setFiltered(list); setCurrentIdx(0); if (list.length > 0) loadNotes(list[0]); }}
+              className={`ch-card ${!selectedChapter ? 'selected' : ''}`}
+              style={{fontWeight:700,fontSize:12}}
+            >
+              全{problems.filter(p => p.imgs && p.imgs.length > 0).length}問
+            </button>
+            <span style={{fontSize:12,color:'var(--text2)',fontWeight:700,whiteSpace:'nowrap',marginLeft:'auto'}}>{currentIdx + 1}/{filtered.length}</span>
+          </div>
+
+          {/* ロック警告 */}
+          {locked && (
+            <div style={{background:'#fff5f5',border:'1px solid #feb2b2',borderRadius:8,padding:'6px 12px',marginBottom:4,display:'flex',alignItems:'center',gap:8}}>
+              <span style={{fontSize:16}}>🔒</span>
+              <span style={{fontSize:12,fontWeight:700,color:'#c53030'}}>「また明日」が5問以上あります — 復習問題のみ出題中</span>
+            </div>
+          )}
+
+          {/* Collapsible chapter bar */}
+          {showChBar && (
+            <div className="ch-bar">
+              {sortedChapters.map(ch => {
+                const chProblems = problems.filter(p => p.chapter === ch && p.imgs && p.imgs.length > 0);
+                if (chProblems.length === 0) return null;
+                const isSelected = selectedChapter === ch;
+                const isExpanded = expandedChapter === ch;
+                const shortName = ch.replace(/第\d+章\s*/, '');
+                const chNum = ch.match(/第(\d+)章/) ? ch.match(/第(\d+)章/)[1] : '';
+                return (
+                  <div
+                    key={ch}
+                    className={`ch-card ${isSelected ? 'selected' : ''} ${isExpanded ? 'expanded' : ''}`}
+                    onClick={() => toggleChapter(ch)}
+                  >
+                    <div className="ch-name">
+                      <span style={{color:'var(--text2)'}}>{chNum}</span>
+                      <span>{shortName}</span>
+                      <span className="ch-count">{chProblems.length}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Chapter expand popup (modal) */}
+          {expandedChapter && (() => {
+            const ch = expandedChapter;
+            const chProblems = problems.filter(p => p.chapter === ch && p.imgs && p.imgs.length > 0);
+            const srState = getState(category.id);
+            return (
+              <React.Fragment>
+                <div className="ch-overlay" onClick={() => setExpandedChapter(null)} />
+                <div className="ch-expand" onClick={e => e.stopPropagation()}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                    <span style={{fontWeight:800,fontSize:14,color:'var(--accent)'}}>{ch}</span>
+                    <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                      <button
+                        onClick={() => filterByChapter(ch)}
+                        style={{fontSize:12,fontWeight:700,color:'var(--accent)',background:'var(--accent-light)',border:'1px solid var(--accent)',borderRadius:6,padding:'4px 12px',cursor:'pointer',opacity:0.9}}
+                      >
+                        この章をランダム出題
+                      </button>
+                      <span style={{cursor:'pointer',fontSize:16,color:'var(--text2)',padding:'0 4px'}} onClick={() => setExpandedChapter(null)}>✕</span>
+                    </div>
+                  </div>
+                  <div className="q-grid">
+                    {chProblems.map(p => {
+                      const num = p.q.replace('問題', '').replace(/^\d+-/, '');
+                      const isCurrent = filtered[currentIdx] && filtered[currentIdx].q === p.q;
+                      const st = srState[p.q];
+                      const isMastered = st && st.mastered;
+                      return (
+                        <div
+                          key={p.q}
+                          className={`q-pill ${isCurrent ? 'active' : ''} ${isMastered ? 'mastered' : ''}`}
+                          onClick={() => { goToProblem(p); setExpandedChapter(null); }}
+                        >
+                          {num}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </React.Fragment>
+            );
+          })()}
+
+          {/* Main 2-column layout */}
+          <div className={`main-layout ${showChBar ? 'bar-open' : ''}`} style={{flex:1,minHeight:0}}>
+            {/* Left: PDF display with marker canvas */}
+            <div className="pdf-panel" style={{position:'relative',display:'flex',flexDirection:'column'}}>
+              {/* Marker toolbar: トグルボタン + 展開時のツール */}
+              <div style={{display:'flex',gap:4,padding:'4px 8px',borderBottom:'1px solid var(--border)',alignItems:'center',flexShrink:0,flexWrap:'wrap'}}>
+                <button onClick={() => setMarkerActive(!markerActive)}
+                  style={{padding:'3px 10px',borderRadius:4,border: markerActive ? '2px solid var(--accent)' : '1px solid var(--border)',
+                  background: markerActive ? 'var(--accent-light)' : 'var(--card2)',fontSize:11,fontWeight:700,cursor:'pointer',color: markerActive ? 'var(--accent)' : '#666'}}>
+                  {markerActive ? '✏️ マーカーON' : '✏️ マーカー'}
+                </button>
+                {markerActive && (<>
+                  {[
+                    {c:'rgba(255,255,0,0.3)',label:'黄',bg:'rgba(255,255,0,0.5)'},
+                    {c:'rgba(255,100,150,0.3)',label:'赤',bg:'rgba(255,100,150,0.5)'},
+                    {c:'rgba(80,180,255,0.3)',label:'青',bg:'rgba(80,180,255,0.5)'},
+                    {c:'rgba(100,220,100,0.3)',label:'緑',bg:'rgba(100,220,100,0.5)'},
+                  ].map(m => (
+                    <button key={m.label} onClick={() => { setMarkerColor(m.c); setEraseMode(false); }}
+                      style={{padding:'3px 10px',borderRadius:4,border: !eraseMode && markerColor===m.c ? '2px solid var(--accent)' : '1px solid var(--border)',
+                      background:m.bg,fontSize:11,fontWeight:700,cursor:'pointer',color:'#333'}}>{m.label}</button>
+                  ))}
+                  <button onClick={() => setEraseMode(!eraseMode)}
+                    style={{padding:'3px 10px',borderRadius:4,border:eraseMode?'2px solid var(--accent)':'1px solid var(--border)',
+                    background:eraseMode?'#ffe0e0':'var(--card2)',fontSize:11,fontWeight:700,cursor:'pointer',color:'#333'}}>消</button>
+                  <div style={{display:'flex',alignItems:'center',gap:4,marginLeft:4}}>
+                    <span style={{fontSize:10,color:'var(--text2)'}}>細</span>
+                    <input type="range" min="4" max="32" value={lineWidth}
+                      onChange={(e) => setLineWidth(Number(e.target.value))}
+                      style={{width:60,accentColor:'var(--accent)',cursor:'pointer'}} />
+                    <span style={{fontSize:10,color:'var(--text2)'}}>太</span>
+                  </div>
+                  <button onClick={() => { if(confirm('このマーカーを全て消しますか？')) clearHighlights(current.q); }}
+                    style={{padding:'3px 10px',borderRadius:4,border:'1px solid var(--border)',background:'var(--card2)',fontSize:11,fontWeight:700,cursor:'pointer',color:'#999',marginLeft:'auto'}}>全消</button>
+                </>)}
+              </div>
+              {current.imgs && current.imgs.length > 0 ? (
+                <div style={{flex:1,position:'relative',overflowY: current.imgs.length > 1 ? 'auto' : 'hidden',overflowX:'hidden',display:'flex',flexDirection:'column',alignItems:'center'}}>
+                  <div style={{position:'relative',display:'inline-block',width:'100%'}}>
+                    {current.imgs.map((imgSrc, imgIdx) => (
+                      <img key={imgIdx} ref={imgIdx === 0 ? imgRef : null} src={imgSrc} alt={`${current.q} p${imgIdx+1}`} loading="lazy"
+                        onLoad={imgIdx === 0 ? () => {
+                          syncCanvas();
+                          const pv = previewRef.current;
+                          if (pv && canvasRef.current) { pv.width = canvasRef.current.width; pv.height = canvasRef.current.height; pv.style.width = canvasRef.current.style.width; pv.style.height = canvasRef.current.style.height; }
+                          restoreCanvas(current.q);
+                          // previewキャンバスのサイズ合わせ
+                          const pv2 = previewRef.current;
+                          if (pv2 && canvasRef.current) { pv2.width = canvasRef.current.width; pv2.height = canvasRef.current.height; pv2.style.width = canvasRef.current.style.width; pv2.style.height = canvasRef.current.style.height; }
+                        } : undefined}
+                        style={{maxWidth:'100%',objectFit:'contain',display:'block',userSelect:'none',pointerEvents:'none'}} />
+                    ))}
+                    {/* マーカーキャンバスは1枚目の上にのみ */}
+                    <canvas ref={canvasRef}
+                      style={{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',pointerEvents:'none'}} />
+                    <canvas ref={previewRef}
+                      onMouseDown={markerActive ? startDraw : undefined} onMouseMove={markerActive ? moveDraw : undefined} onMouseUp={markerActive ? endDraw : undefined} onMouseLeave={markerActive ? (e) => { if(drawing.current) endDraw(e); } : undefined}
+                      onTouchStart={markerActive ? startDraw : undefined} onTouchMove={markerActive ? moveDraw : undefined} onTouchEnd={markerActive ? endDraw : undefined}
+                      style={{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',pointerEvents: markerActive ? 'auto' : 'none',cursor: markerActive ? 'crosshair' : 'default'}} />
+                  </div>
+                </div>
+              ) : (
+                <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text2)'}}>教科書を開いて問題を解いてください</div>
+              )}
+            </div>
+
+            {/* Right: memo + rating (no problem header) */}
+            <div className="ctrl-panel">
+              {/* 論点（3行 + リファレンス自動表示） */}
+              <div className="memo-box">
+                <label className="memo-label" style={{color:'var(--accent)'}}>論点</label>
+                {/* 現在の問題のリファレンス自動表示 */}
+                {current && current.chapter && (
+                  <div style={{marginBottom:3,padding:'2px 6px',background:'var(--accent-light)',borderRadius:4,fontSize:9,color:'var(--accent)',fontWeight:600,lineHeight:1.5}}>
+                    {current.chapter}
+                  </div>
+                )}
+                <textarea
+                  value={ronten}
+                  onChange={(e) => setRonten(e.target.value)}
+                  onFocus={(e) => { if (!ronten || ronten.trim() === '') setRonten('①'); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.shiftKey) {
+                      e.preventDefault();
+                      const ta = e.target;
+                      const start = ta.selectionStart;
+                      const val = ronten;
+                      const lines = val.substring(0, start).split('\n');
+                      const nums = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳'];
+                      const nextNum = lines.length < nums.length ? nums[lines.length] : '';
+                      const insert = '\n' + nextNum;
+                      const newVal = val.substring(0, start) + insert + val.substring(ta.selectionEnd);
+                      setRonten(newVal);
+                      setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + insert.length; }, 0);
+                    }
+                  }}
+                  placeholder="①から Shift+Enter で次の番号へ"
+                  className="memo-input"
+                  rows={3}
+                  style={{resize:'none',lineHeight:1.6}}
+                />
+              </div>
+
+              {/* 解法手順 */}
+              <div className="memo-box" style={{flex:1,display:'flex',flexDirection:'column'}}>
+                <label className="memo-label" style={{color:'var(--accent)'}}>解法手順</label>
+                <textarea
+                  value={kaiho}
+                  onChange={(e) => setKaiho(e.target.value)}
+                  onFocus={(e) => { if (!kaiho || kaiho.trim() === '') setKaiho('①'); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.shiftKey) {
+                      e.preventDefault();
+                      const ta = e.target;
+                      const start = ta.selectionStart;
+                      const val = kaiho;
+                      const lines = val.substring(0, start).split('\n');
+                      const nums = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳'];
+                      const nextNum = lines.length < nums.length ? nums[lines.length] : '';
+                      const insert = '\n' + nextNum;
+                      const newVal = val.substring(0, start) + insert + val.substring(ta.selectionEnd);
+                      setKaiho(newVal);
+                      setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + insert.length; }, 0);
+                    }
+                  }}
+                  placeholder="①から Shift+Enter で次の番号へ"
+                  className="memo-input"
+                  style={{flex:1,minHeight:120,resize:'vertical',lineHeight:1.7}}
+                />
+              </div>
+
+              {/* 4 rating buttons */}
+              <div className="rate-grid">
+                <button onClick={() => rateAnswer('全然ダメ')} className="rate-btn" style={{background:'var(--red)'}}>
+                  また明日
+                </button>
+                <button onClick={() => rateAnswer('曖昧')} className="rate-btn" style={{background:'var(--orange)'}}>
+                  3日後
+                </button>
+                <button onClick={() => rateAnswer('思い出せた')} className="rate-btn" style={{background:'#3182ce'}}>
+                  7日後
+                </button>
+                <button onClick={() => rateAnswer('完璧')} className="rate-btn" style={{background:'var(--green)'}}>
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // テキストの章番号 → テキスト巻数＋章名＋節マッピング
+    // s: [[from,to,'節名'], ...] fromページ〜toページ → 節名に解決
+    // r: 'A'=最重要, 'B'=重要  ※ABランクのみ出題対象
+    const CHAPTER_MAP = {
+      'kanri-riron': {
+        1:{t:'テキスト①',n:'原価計算総論',r:'A',s:[[1,4,'第1節 原価計算の目的'],[5,8,'第2節 原価計算制度'],[9,12,'第3節 原価の分類']]},
+        2:{t:'テキスト①',n:'費目別計算総論',r:'B',s:[[1,6,'第1節 費目別計算の意義']]},
+        3:{t:'テキスト①',n:'材料費の計算',r:'A',s:[[1,5,'第1節 材料費の分類'],[6,10,'第2節 消費数量の計算'],[11,15,'第3節 消費価格の計算'],[16,20,'第4節 材料副費']]},
+        4:{t:'テキスト①',n:'労務費の計算',r:'A',s:[[1,4,'第1節 労務費の分類'],[5,8,'第2節 要支払額の計算'],[9,12,'第3節 消費賃金の計算']]},
+        5:{t:'テキスト①',n:'経費の計算',r:'B',s:[[1,4,'第1節 経費の分類'],[5,8,'第2節 経費の計算方法']]},
+        6:{t:'テキスト①',n:'製造間接費',r:'A',s:[[1,5,'第1節 製造間接費総論'],[6,10,'第2節 製造間接費の予定配賦'],[11,15,'第3節 製造間接費配賦差異の分析'],[16,20,'第4節 固定予算と変動予算'],[21,25,'第5節 配賦差異の会計処理']]},
+        7:{t:'テキスト①',n:'製造間接費の配賦',r:'B'},8:{t:'テキスト①',n:'部門別計算',r:'B'},
+        9:{t:'テキスト②',n:'個別原価計算',r:'B'},10:{t:'テキスト②',n:'単純総合原価計算',r:'A'},
+        11:{t:'テキスト②',n:'仕損・減損',r:'A'},12:{t:'テキスト②',n:'工程別総合原価計算',r:'A'},
+        13:{t:'テキスト②',n:'組別・等級別総合原価計算',r:'B'},14:{t:'テキスト②',n:'連産品・副産物',r:'B'},
+        15:{t:'テキスト②',n:'標準原価計算',r:'A',s:[[85,87,'第1節 標準原価計算の意義'],[88,89,'第2節 原価標準の設定'],[90,91,'第3節 標準原価の計算'],[92,93,'第4節 原価差異の分析(材料・労務)'],[94,94,'第5節 原価差異の分析(製造間接費)'],[95,96,'第6節 原価差異の会計処理']]},
+        16:{t:'テキスト③',n:'直接原価計算',r:'A'},17:{t:'テキスト③',n:'CVP分析',r:'A'},
+        18:{t:'テキスト③',n:'原価予測の方法',r:'B'},19:{t:'テキスト③',n:'最適セールスミックス',r:'B'},
+        20:{t:'テキスト③',n:'業務的意思決定',r:'A'},21:{t:'テキスト③',n:'設備投資の意思決定',r:'A'},
+        22:{t:'テキスト③',n:'予算管理',r:'A'},23:{t:'テキスト③',n:'事業部制',r:'A'}
+      },
+      'zaimu-riron': {
+        1:{t:'財務会計 理論①',n:'現金預金',r:'B'},2:{t:'財務会計 理論①',n:'有形固定資産',r:'A'},3:{t:'財務会計 理論①',n:'無形固定資産',r:'B'},
+        4:{t:'財務会計 理論①',n:'引当金',r:'A'},5:{t:'財務会計 理論①',n:'商品売買・棚卸資産',r:'A'},6:{t:'財務会計 理論①',n:'本支店会計',r:'B'},
+        7:{t:'財務会計 理論①',n:'1株当たり情報',r:'B'},8:{t:'財務会計 理論①',n:'有価証券',r:'A'},9:{t:'財務会計 理論①',n:'債権債務',r:'B'},
+        10:{t:'財務会計 理論①',n:'貸倒引当金',r:'A'},11:{t:'財務会計 理論①',n:'デリバティブ',r:'A'},12:{t:'財務会計 理論②',n:'リース会計',r:'A'},
+        13:{t:'財務会計 理論②',n:'研究開発費',r:'B'},14:{t:'財務会計 理論②',n:'減損会計',r:'A'},15:{t:'財務会計 理論②',n:'税効果会計',r:'A'},
+        16:{t:'財務会計 理論②',n:'外貨建取引',r:'A'},17:{t:'財務会計 理論②',n:'社債',r:'A'},18:{t:'財務会計 理論②',n:'退職給付',r:'A'},
+        19:{t:'財務会計 理論②',n:'資産除去債務',r:'A'},20:{t:'財務会計 理論②',n:'純資産',r:'A'},21:{t:'財務会計 理論②',n:'分配可能額',r:'A'},
+        22:{t:'財務会計 理論②',n:'ストックオプション',r:'A'},23:{t:'財務会計 理論②',n:'会計上の変更',r:'A'},
+        24:{t:'財務会計 理論②',n:'中間財務諸表',r:'B'},25:{t:'財務会計 理論③',n:'収益認識',r:'A'},26:{t:'財務会計 理論③',n:'連結会計',r:'A'},
+        27:{t:'財務会計 理論③',n:'包括利益',r:'B'},28:{t:'財務会計 理論③',n:'退職給付会計(連結)',r:'A'},29:{t:'財務会計 理論③',n:'在外支店',r:'B'},
+        30:{t:'財務会計 理論③',n:'在外子会社',r:'A'},31:{t:'財務会計 理論③',n:'個別CF',r:'B'},32:{t:'財務会計 理論③',n:'企業結合',r:'A'},
+        33:{t:'財務会計 理論③',n:'事業分離',r:'A'},34:{t:'財務会計 理論③',n:'決算整理',r:'B'}
+      },
+      'kansaron': {},
+      'kigyoho': {}
+    };
+    const CIRCLED = {'①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9,'⑩':10,'⑪':11,'⑫':12,'⑬':13,'⑭':14,'⑮':15,'⑯':16,'⑰':17,'⑱':18,'⑲':19,'⑳':20,'㉑':21,'㉒':22,'㉓':23,'㉔':24,'㉕':25,'㉖':26,'㉗':27,'㉘':28,'㉙':29,'㉚':30,'㉛':31,'㉜':32,'㉝':33,'㉞':34,'㉟':35};
+    const NUM_TO_CIRCLED = ['','①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳','㉑','㉒','㉓','㉔','㉕','㉖','㉗','㉘','㉙','㉚','㉛','㉜','㉝','㉞','㉟'];
+    const autoConvertPage = (val) => {
+      // "6 1" or "6-1" or "12 3" → "⑥-1" or "⑫-3"
+      const m = val.match(/^(\d{1,2})\s*[-\s]\s*(\d+.*)$/);
+      if (m) {
+        const n = parseInt(m[1]);
+        if (n >= 1 && n <= 35 && NUM_TO_CIRCLED[n]) return NUM_TO_CIRCLED[n] + '-' + m[2];
+      }
+      return val;
+    };
+    const parsePageCode = (code) => {
+      if (!code) return null;
+      const m = code.match(/^([①-⑳㉑-㉟])-?(.*)$/);
+      if (!m) return null;
+      return { ch: CIRCLED[m[1]] || 0, sub: m[2] || '' };
+    };
+    const resolveRef = (catId, pageFrom, pageTo) => {
+      const pf = parsePageCode(pageFrom);
+      if (!pf) return pageFrom + (pageTo ? ' 〜 ' + pageTo : '');
+      const map = CHAPTER_MAP[catId] || {};
+      const info = map[pf.ch];
+      if (!info) return `第${pf.ch}章（${pageFrom}${pageTo ? ' 〜 ' + pageTo : ''}）`;
+      const pageCode = `（${pageFrom}${pageTo ? ' 〜 ' + pageTo : ''}）`;
+      let secName = '';
+      if (info.s && pf.sub) {
+        const num = parseInt(pf.sub);
+        if (!isNaN(num)) {
+          const sec = info.s.find(([f,t]) => num >= f && num <= t);
+          if (sec) secName = ' ' + sec[2];
+        }
+      }
+      return `${info.t} 第${pf.ch}章 ${info.n}${secName} ${pageCode}`;
+    };
+
+    const RATINGS = [
+      { key: 'もう一回', days: 1, color: '#e53e3e' },
+      { key: 'あやふや', days: 3, color: '#dd6b20' },
+      { key: 'OK', days: 7, color: '#3182ce' },
+      { key: '定着', days: null, color: '#38a169' }
+    ];
+
+
+    /* ── RecallStudy: 今日の復習 専用フルページ ── */
+    const RecallStudy = ({ problem, allDue, startIdx, onBack }) => {
+      const [queue] = useState(allDue);
+      const [qIdx, setQIdx] = useState(startIdx || 0);
+      const current = queue[qIdx];
+
+      const [ronten, setRonten] = useState('');
+      const [kaiho, setKaiho] = useState('');
+      const [showPrev, setShowPrev] = useState(false);
+      const [prevNotes, setPrevNotes] = useState(null);
+
+      const [markerActive, setMarkerActive] = useState(false);
+      const [markerColor, setMarkerColor] = useState('rgba(255,255,0,0.3)');
+      const [eraseMode, setEraseMode] = useState(false);
+      const canvasRef = React.useRef(null);
+      const previewRef = React.useRef(null);
+      const imgRef = React.useRef(null);
+      const drawing = React.useRef(false);
+      const startPt = React.useRef(null);
+
+      // テーマカラー適用
+      useEffect(() => {
+        if (current) applyTheme(current.catColor);
+        return () => resetTheme();
+      }, [current && current.catColor]);
+
+      // 問題読み込み
+      useEffect(() => {
+        if (!current) return;
+        // 空白で新規
+        setRonten(''); setKaiho('');
+        setShowPrev(false);
+        // 前回の書き込みを読み込む
+        try {
+          const histKey = `ar3_history_${current.catId}_${current.q}`;
+          const hist = JSON.parse(localStorage.getItem(histKey) || '[]');
+          setPrevNotes(hist.length > 0 ? { ronten: hist[hist.length-1].ronten||'', kaiho: hist[hist.length-1].kaiho||'' } : null);
+        } catch(e) { setPrevNotes(null); }
+      }, [qIdx]);
+
+      // マーカー関連
+      const getPos = (e) => { const c = previewRef.current || canvasRef.current; const r = c.getBoundingClientRect(); const t = e.touches ? e.touches[0] : e; return {x:t.clientX-r.left, y:t.clientY-r.top}; };
+      const snapLine = (p1,p2) => { const dy=Math.abs(p2.y-p1.y), dx=Math.abs(p2.x-p1.x); if(dx>10&&dy<dx*0.15){const y=(p1.y+p2.y)/2; return{x1:p1.x,y1:y,x2:p2.x,y2:y};} return{x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y}; };
+      const startDraw = (e) => { e.preventDefault(); drawing.current=true; startPt.current=getPos(e); };
+      const moveDraw = (e) => { if(!drawing.current) return; e.preventDefault(); const pv=previewRef.current; if(!pv) return; const ctx=pv.getContext('2d'); ctx.clearRect(0,0,pv.width,pv.height); const s=snapLine(startPt.current,getPos(e)); ctx.save(); ctx.strokeStyle=eraseMode?'rgba(255,0,0,0.3)':markerColor; if(eraseMode) ctx.setLineDash([6,4]); ctx.lineWidth=eraseMode?28:14; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke(); ctx.restore(); };
+      const endDraw = (e) => { if(!drawing.current) return; drawing.current=false; const pv=previewRef.current; if(pv) pv.getContext('2d').clearRect(0,0,pv.width,pv.height); const refEl=previewRef.current||canvasRef.current; const ep=e.changedTouches?{x:e.changedTouches[0].clientX-refEl.getBoundingClientRect().left,y:e.changedTouches[0].clientY-refEl.getBoundingClientRect().top}:getPos(e); const c=canvasRef.current; const ctx=c.getContext('2d'); const s=snapLine(startPt.current,ep); if(eraseMode){ctx.save();ctx.globalCompositeOperation='destination-out';ctx.lineWidth=28;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(s.x1,s.y1);ctx.lineTo(s.x2,s.y2);ctx.stroke();ctx.restore();}else{ctx.save();ctx.globalCompositeOperation='source-over';ctx.strokeStyle=markerColor;ctx.lineWidth=14;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(s.x1,s.y1);ctx.lineTo(s.x2,s.y2);ctx.stroke();ctx.restore();} startPt.current=null; if(current) { try{localStorage.setItem('ar3_mhl_'+current.catId+'_'+current.q, c.toDataURL('image/png'));}catch(e){} } };
+      const syncCanvas = () => { const c=canvasRef.current; const img=imgRef.current; if(!c||!img) return; const container=img.parentElement; const w=container.scrollWidth||img.clientWidth; const h=container.scrollHeight||img.clientHeight; if(w===0||h===0) return; c.width=w; c.height=h; c.style.width=w+'px'; c.style.height=h+'px'; const pv=previewRef.current; if(pv){pv.width=w;pv.height=h;pv.style.width=w+'px';pv.style.height=h+'px';} };
+      const restoreCanvas = (q) => { const c=canvasRef.current; if(!c||!current) return; const ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); const d=localStorage.getItem('ar3_mhl_'+current.catId+'_'+q); if(d){const im=new window.Image(); im.onload=()=>{ctx.drawImage(im,0,0,c.width,c.height);}; im.src=d;} };
+
+      const saveNotes = () => {
+        if (!current) return;
+        const nk = `ar3_notes_${current.catId}_${current.q}`;
+        localStorage.setItem(nk, JSON.stringify({ ronten, kaiho }));
+        const bulkKey = `ar3_notes_${current.catId}`;
+        try {
+          const bulk = JSON.parse(localStorage.getItem(bulkKey) || '{}');
+          if (ronten.trim() || kaiho.trim()) bulk[current.q] = { ronten: ronten.trim(), kaiho: kaiho.trim() };
+          localStorage.setItem(bulkKey, JSON.stringify(bulk));
+        } catch(e){}
+      };
+
+      const rate = (rating) => {
+        saveNotes();
+        const p = current;
+        // 履歴に追加
+        try {
+          const histKey = `ar3_history_${p.catId}_${p.q}`;
+          const hist = JSON.parse(localStorage.getItem(histKey) || '[]');
+          hist.push({ ronten: ronten.trim(), kaiho: kaiho.trim(), rating, ratedAt: Date.now() });
+          localStorage.setItem(histKey, JSON.stringify(hist));
+        } catch(e){}
+        const state = getState(p.catId);
+        const key = `${p.q}`;
+        const intervals = { '全然ダメ': 1, '曖昧': 3, '思い出せた': 7, '完璧': null };
+        const days = intervals[rating];
+        if (rating === '完璧') {
+          state[key] = { mastered: true, lastRating: rating, ratedAt: Date.now() };
+        } else {
+          const tomorrow = new Date(); tomorrow.setHours(0,0,0,0); tomorrow.setDate(tomorrow.getDate() + days);
+          state[key] = { nextReview: tomorrow.getTime(), rating, ratedAt: Date.now() };
+        }
+        setState(p.catId, state);
+        // 次の問題へ
+        if (qIdx + 1 < queue.length) {
+          setQIdx(qIdx + 1);
+        } else {
+          onBack();
+        }
+      };
+
+      const handleNumberedKey = (getValue, setValue) => (e) => {
+        if (e.key === 'Enter' && e.shiftKey) {
+          e.preventDefault();
+          const ta = e.target; const start = ta.selectionStart; const v = getValue();
+          const lines = v.substring(0, start).split('\n');
+          const nums = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳'];
+          const nextNum = lines.length < nums.length ? nums[lines.length] : '';
+          const insert = '\n' + nextNum;
+          const newVal = v.substring(0, start) + insert + v.substring(ta.selectionEnd);
+          setValue(newVal);
+          setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + insert.length; }, 0);
+        }
+      };
+
+      if (!current) return <div style={{padding:40,textAlign:'center'}}>問題がありません<br/><button onClick={onBack}>戻る</button></div>;
+
+      const t = THEME_MAP[current.catColor] || THEME_MAP.blue;
+
+      return (
+        <div style={{background:'var(--bg)',height:'100vh',overflow:'hidden',padding:'6px 10px',display:'flex',flexDirection:'column',position:'relative'}}>
+          {/* Top bar */}
+          <div className="top-bar">
+            <button onClick={() => { saveNotes(); onBack(); }} style={{padding:'5px 12px',background:'var(--accent)',color:'#fff',borderRadius:6,fontWeight:700,fontSize:12,border:'none',cursor:'pointer',whiteSpace:'nowrap'}}>戻る</button>
+            <span style={{fontSize:13,fontWeight:800,color:'var(--accent)'}}>{current.chapter || current.q}</span>
+            <span style={{fontSize:10,color:'var(--text2)',fontWeight:600}}>{current.catName}</span>
+            <span style={{fontSize:12,color:'var(--text2)',fontWeight:700,whiteSpace:'nowrap',marginLeft:'auto'}}>{qIdx + 1}/{queue.length}</span>
+          </div>
+
+          {/* Main 2-column layout */}
+          <div className="main-layout" style={{flex:1,minHeight:0}}>
+            {/* Left: PDF display */}
+            <div className="pdf-panel" style={{position:'relative',display:'flex',flexDirection:'column'}}>
+              <div style={{display:'flex',gap:4,padding:'4px 8px',borderBottom:'1px solid var(--border)',alignItems:'center',flexShrink:0,flexWrap:'wrap'}}>
+                <button onClick={() => setMarkerActive(!markerActive)}
+                  style={{padding:'3px 10px',borderRadius:4,border: markerActive ? '2px solid var(--accent)' : '1px solid var(--border)',
+                  background: markerActive ? 'var(--accent-light)' : 'var(--card2)',fontSize:11,fontWeight:700,cursor:'pointer',color: markerActive ? 'var(--accent)' : '#666'}}>
+                  {markerActive ? '✏️ マーカーON' : '✏️ マーカー'}
+                </button>
+                {markerActive && (<>
+                  {[{c:'rgba(255,255,0,0.3)',label:'黄',bg:'rgba(255,255,0,0.5)'},{c:'rgba(255,100,150,0.3)',label:'赤',bg:'rgba(255,100,150,0.5)'},{c:'rgba(80,180,255,0.3)',label:'青',bg:'rgba(80,180,255,0.5)'}].map(m => (
+                    <button key={m.label} onClick={() => { setMarkerColor(m.c); setEraseMode(false); }}
+                      style={{padding:'3px 10px',borderRadius:4,border: !eraseMode && markerColor===m.c ? '2px solid var(--accent)' : '1px solid var(--border)',
+                      background:m.bg,fontSize:11,fontWeight:700,cursor:'pointer',color:'#333'}}>{m.label}</button>
+                  ))}
+                  <button onClick={() => setEraseMode(!eraseMode)}
+                    style={{padding:'3px 10px',borderRadius:4,border:eraseMode?'2px solid var(--accent)':'1px solid var(--border)',
+                    background:eraseMode?'#ffe0e0':'var(--card2)',fontSize:11,fontWeight:700,cursor:'pointer',color:'#333'}}>消</button>
+                </>)}
+              </div>
+              {current.imgs && current.imgs.length > 0 ? (
+                <div style={{flex:1,position:'relative',overflowY:'auto',overflowX:'hidden',display:'flex',flexDirection:'column',alignItems:'center'}}>
+                  <div style={{position:'relative',display:'inline-block',width:'100%'}}>
+                    {current.imgs.map((imgSrc, imgIdx) => (
+                      <img key={imgIdx} ref={imgIdx===0?imgRef:null} src={imgSrc} loading="eager"
+                        onLoad={imgIdx===0 ? () => { syncCanvas(); restoreCanvas(current.q); const pv=previewRef.current; if(pv&&canvasRef.current){pv.width=canvasRef.current.width;pv.height=canvasRef.current.height;pv.style.width=canvasRef.current.style.width;pv.style.height=canvasRef.current.style.height;} } : undefined}
+                        style={{maxWidth:'100%',display:'block',userSelect:'none',pointerEvents:'none'}} />
+                    ))}
+                    <canvas ref={canvasRef} style={{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',pointerEvents:'none'}} />
+                    <canvas ref={previewRef}
+                      onMouseDown={markerActive?startDraw:undefined} onMouseMove={markerActive?moveDraw:undefined} onMouseUp={markerActive?endDraw:undefined}
+                      onMouseLeave={markerActive?(e)=>{if(drawing.current)endDraw(e);}:undefined}
+                      style={{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',pointerEvents:markerActive?'auto':'none',cursor:markerActive?'crosshair':'default'}} />
+                  </div>
+                </div>
+              ) : (
+                <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text2)'}}>PDF画像なし</div>
+              )}
+            </div>
+
+            {/* Right: memo + rating */}
+            <div className="ctrl-panel">
+              {/* 前回の書き込み */}
+              {prevNotes && (
+                <div>
+                  <button onClick={() => setShowPrev(v => !v)} style={{width:'100%',padding:'4px 8px',background:showPrev?'#fefcbf':'#f7fafc',border:'1px solid '+(showPrev?'#f6e05e':'#cbd5e0'),borderRadius:6,fontSize:11,fontWeight:700,color:showPrev?'#744210':'#718096',cursor:'pointer',textAlign:'left'}}>
+                    {showPrev ? '▲ 前回の書き込みを隠す' : '▼ 前回の書き込みを見る'}
+                  </button>
+                  {showPrev && (
+                    <div style={{marginTop:4,padding:'6px 8px',background:'#fffbeb',border:'1px solid #f6e05e',borderRadius:6,fontSize:11,color:'#744210',lineHeight:1.6,maxHeight:160,overflowY:'auto',whiteSpace:'pre-wrap'}}>
+                      {prevNotes.ronten && (<><div style={{fontSize:10,fontWeight:800,color:'#b7791f',marginBottom:2}}>論点</div><div style={{marginBottom:6}}>{prevNotes.ronten}</div></>)}
+                      {prevNotes.kaiho && (<><div style={{fontSize:10,fontWeight:800,color:'#b7791f',marginBottom:2}}>解法手順</div><div>{prevNotes.kaiho}</div></>)}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* 論点 */}
+              <div className="memo-box">
+                <label className="memo-label" style={{color:'var(--accent)'}}>論点</label>
+                {current.chapter && (
+                  <div style={{marginBottom:3,padding:'2px 6px',background:'var(--accent-light)',borderRadius:4,fontSize:9,color:'var(--accent)',fontWeight:600,lineHeight:1.5}}>
+                    {current.chapter}
+                  </div>
+                )}
+                <textarea value={ronten} onChange={e => setRonten(e.target.value)}
+                  onFocus={(e) => { if (!ronten || ronten.trim() === '') setRonten('①'); }}
+                  onKeyDown={handleNumberedKey(() => ronten, setRonten)}
+                  placeholder="①から Shift+Enter で次の番号へ"
+                  className="memo-input" rows={3} style={{resize:'none',lineHeight:1.6}} />
+              </div>
+              {/* 解法手順 */}
+              <div className="memo-box" style={{flex:1,display:'flex',flexDirection:'column'}}>
+                <label className="memo-label" style={{color:'var(--accent)'}}>解法手順</label>
+                <textarea value={kaiho} onChange={e => setKaiho(e.target.value)}
+                  onFocus={(e) => { if (!kaiho || kaiho.trim() === '') setKaiho('①'); }}
+                  onKeyDown={handleNumberedKey(() => kaiho, setKaiho)}
+                  placeholder="①から Shift+Enter で次の番号へ"
+                  className="memo-input" style={{flex:1,minHeight:120,resize:'vertical',lineHeight:1.7}} />
+              </div>
+              {/* 4 rating buttons */}
+              <div className="rate-grid">
+                <button onClick={() => rate('全然ダメ')} className="rate-btn" style={{background:'var(--red)'}}>また明日</button>
+                <button onClick={() => rate('曖昧')} className="rate-btn" style={{background:'var(--orange)'}}>3日後</button>
+                <button onClick={() => rate('思い出せた')} className="rate-btn" style={{background:'#3182ce'}}>7日後</button>
+                <button onClick={() => rate('完璧')} className="rate-btn" style={{background:'var(--green)'}}>OK</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const TheoryStudy = ({ category, onBack }) => {
+      const [entries, setEntries] = useState([]);
+      const [newFrom, setNewFrom] = useState('');
+      const [newTo, setNewTo] = useState('');
+      const [newRef, setNewRef] = useState('');
+      const [keyword, setKeyword] = useState('');
+      const [quizEntry, setQuizEntry] = useState(null);
+      const [inputMode, setInputMode] = useState('page');
+      const [expandedId, setExpandedId] = useState(null);
+
+      const catColors = {
+        blue: { bg: 'linear-gradient(135deg,#1e8cd6 0%,#3da5e8 30%,#5cbcf0 55%,#8ad4f8 80%,#b0e4ff 100%)', accent: '#2b7bb9', light: '#e8f4fd' },
+        orange: { bg: 'linear-gradient(135deg,#c05621 0%,#dd6b20 30%,#ed8936 55%,#f6ad55 80%,#feebc8 100%)', accent: '#c05621', light: '#fffaf0' },
+        purple: { bg: 'linear-gradient(135deg,#6b3fa0 0%,#8b5fcf 30%,#a87de0 55%,#c8a0f0 80%,#e0c0ff 100%)', accent: '#6b3fa0', light: '#f0e6ff' },
+        teal: { bg: 'linear-gradient(135deg,#0d7377 0%,#14919b 30%,#2ab0b8 55%,#60d0d5 80%,#a0e8eb 100%)', accent: '#0d7377', light: '#e0f7f8' }
+      };
+      const cc = catColors[category.color] || catColors.blue;
+
+      useEffect(() => {
+        const state = getState(category.id);
+        setEntries(state.entries || []);
+      }, [category.id]);
+
+      const saveEntries = (updated) => { const state = getState(category.id); state.entries = updated; setState(category.id, state); setEntries(updated); };
+
+      useEffect(() => {
+        if (newFrom) setNewRef(resolveRef(category.id, newFrom, newTo));
+        else setNewRef('');
+      }, [newFrom, newTo]);
+
+      // ページ指定で出題
+      const quizByPage = () => {
+        if (!newFrom.trim()) return;
+        const ref = newRef || resolveRef(category.id, newFrom.trim(), newTo.trim());
+        const existing = entries.find(e => e.pageFrom === newFrom.trim() && e.pageTo === (newTo.trim() || ''));
+        if (existing) {
+          setQuizEntry(existing);
+        } else {
+          const entry = { id: Date.now(), pageFrom: newFrom.trim(), pageTo: newTo.trim(), ref, createdAt: Date.now() };
+          const updated = [...entries, entry];
+          saveEntries(updated);
+          setQuizEntry(entry);
+        }
+        setNewFrom(''); setNewTo(''); setNewRef('');
+      };
+
+      // キーワード検索 → ABランクのみ
+      const getTopicList = () => {
+        const map = CHAPTER_MAP[category.id] || {};
+        const topics = [];
+        Object.keys(map).forEach(ch => {
+          const info = map[ch];
+          if (!info.r || (info.r !== 'A' && info.r !== 'B')) return;
+          const label = `${info.t} 第${ch}章 ${info.n}`;
+          topics.push({ ch: parseInt(ch), t: info.t, name: info.n, rank: info.r, label, sections: info.s || [] });
+          if (info.s) {
+            info.s.forEach(sec => {
+              topics.push({ ch: parseInt(ch), t: info.t, name: info.n, rank: info.r, label: `${info.t} 第${ch}章 ${info.n} ${sec[2]}`, secFrom: sec[0], secTo: sec[1], secName: sec[2] });
+            });
+          }
+        });
+        return topics;
+      };
+
+      const filteredTopics = keyword.trim()
+        ? getTopicList().filter(t => t.label.includes(keyword) || t.name.includes(keyword))
+        : getTopicList();
+
+      // キーワードから出題
+      const quizByTopic = (topic) => {
+        const pageFrom = NUM_TO_CIRCLED[topic.ch] + '-' + (topic.secFrom || '1');
+        const pageTo = topic.secTo ? NUM_TO_CIRCLED[topic.ch] + '-' + topic.secTo : '';
+        const ref = topic.label;
+        const existing = entries.find(e => e.ref === ref);
+        if (existing) {
+          setQuizEntry(existing);
+        } else {
+          const entry = { id: Date.now(), pageFrom, pageTo, ref, createdAt: Date.now() };
+          const updated = [...entries, entry];
+          saveEntries(updated);
+          setQuizEntry(entry);
+        }
+        setKeyword('');
+      };
+
+      const deleteEntry = (id) => {
+        saveEntries(entries.filter(e => e.id !== id));
+        const state = getState(category.id);
+        if (state.ratings) { delete state.ratings[`entry_${id}`]; setState(category.id, state); }
+        if (quizEntry && quizEntry.id === id) setQuizEntry(null);
+      };
+
+      const rateEntry = (entryId, ratingKey) => {
+        const state = getState(category.id);
+        if (!state.ratings) state.ratings = {};
+        const r = RATINGS.find(x => x.key === ratingKey);
+        const key = `entry_${entryId}`;
+        if (r.days === null) {
+          state.ratings[key] = { mastered: true, rating: ratingKey, ratedAt: Date.now() };
+        } else {
+          const tmrw = new Date(); tmrw.setHours(0,0,0,0); tmrw.setDate(tmrw.getDate() + r.days);
+          state.ratings[key] = { nextReview: tmrw.getTime(), rating: ratingKey, ratedAt: Date.now() };
+        }
+        setState(category.id, state);
+        setEntries([...entries]);
+        setQuizEntry(null);
+      };
+
+      const getRatingInfo = (entryId) => {
+        const state = getState(category.id);
+        const r = (state.ratings || {})[`entry_${entryId}`];
+        if (!r) return { label: '未学習', color: '#a0aec0', isDue: true };
+        if (r.mastered) return { label: '定着', color: '#38a169', isDue: false };
+        const found = RATINGS.find(x => x.key === r.rating);
+        const isDue = r.nextReview <= Date.now();
+        return { label: r.rating, color: found ? found.color : '#a0aec0', isDue };
+      };
+
+      const dueCount = entries.filter(e => getRatingInfo(e.id).isDue).length;
+
+      const sortedEntries = [...entries].sort((a, b) => {
+        const aInfo = getRatingInfo(a.id);
+        const bInfo = getRatingInfo(b.id);
+        if (aInfo.isDue && !bInfo.isDue) return -1;
+        if (!aInfo.isDue && bInfo.isDue) return 1;
+        return 0;
+      });
+
+      const glass = { background: 'rgba(255,255,255,.85)', backdropFilter: 'blur(12px)', borderRadius: 14, border: '1px solid rgba(255,255,255,.5)', boxShadow: '0 4px 20px rgba(0,0,0,.08)' };
+      const inputSt = { padding: '8px 12px', border: '1px solid #d0d8e0', borderRadius: 8, fontSize: 14, outline: 'none', background: '#f8fafc', textAlign: 'center', width: 90 };
+      const tabBtn = (active) => ({ flex: 1, padding: '8px 0', background: active ? cc.accent : 'rgba(255,255,255,.15)', color: active ? '#fff' : 'rgba(255,255,255,.7)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' });
+
+      // 出題カード表示中
+      if (quizEntry) {
+        const ri = getRatingInfo(quizEntry.id);
+        return (
+          <div style={{ minHeight: '100vh', background: cc.bg, padding: '16px 12px' }}>
+            <div style={{ maxWidth: 720, margin: '0 auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <button onClick={() => setQuizEntry(null)} style={{ padding: '8px 18px', background: 'rgba(255,255,255,.25)', color: '#fff', border: '1px solid rgba(255,255,255,.4)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', backdropFilter: 'blur(8px)' }}>← 戻る</button>
+                <h2 style={{ color: '#fff', fontWeight: 800, fontSize: 16, textShadow: '0 1px 4px rgba(0,0,0,.15)' }}>出題</h2>
+                <div style={{ width: 70 }} />
+              </div>
+
+              <div style={{ ...glass, padding: 28 }}>
+                <div style={{ padding: 24, background: cc.light, borderRadius: 14, border: `2px solid ${cc.accent}30`, marginBottom: 20, textAlign: 'center' }}>
+                  <div style={{ fontSize: 12, color: '#718096', fontWeight: 700, marginBottom: 10 }}>この範囲の内容を説明してください</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: cc.accent, lineHeight: 1.5 }}>{quizEntry.ref || (quizEntry.pageFrom + ' 〜 ' + quizEntry.pageTo)}</div>
+                </div>
+
+                {ri.label !== '未学習' && (
+                  <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: ri.color, background: ri.color + '18', padding: '4px 14px', borderRadius: 10 }}>前回: {ri.label}</span>
+                  </div>
+                )}
+
+                <div style={{ fontSize: 13, color: '#718096', fontWeight: 700, textAlign: 'center', marginBottom: 12 }}>理解度を選択</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {RATINGS.map(r => (
+                    <button key={r.key} onClick={() => rateEntry(quizEntry.id, r.key)}
+                      style={{ padding: '14px 12px', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, color: '#fff', background: r.color, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.12)' }}>
+                      {r.key}{r.days !== null ? `（${r.days}日後）` : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div style={{ minHeight: '100vh', background: cc.bg, padding: '16px 12px' }}>
+          <div style={{ maxWidth: 720, margin: '0 auto' }}>
+            {/* ヘッダー */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <button onClick={onBack} style={{ padding: '8px 18px', background: 'rgba(255,255,255,.25)', color: '#fff', border: '1px solid rgba(255,255,255,.4)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', backdropFilter: 'blur(8px)' }}>← 戻る</button>
+              <h2 style={{ color: '#fff', fontWeight: 800, fontSize: 18, textShadow: '0 1px 4px rgba(0,0,0,.15)' }}>{category.name}</h2>
+              <div style={{ width: 70 }} />
+            </div>
+
+            {/* 入力切替タブ */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+              <button onClick={() => setInputMode('page')} style={tabBtn(inputMode === 'page')}>ページ指定</button>
+              <button onClick={() => setInputMode('keyword')} style={tabBtn(inputMode === 'keyword')}>キーワード出題</button>
+            </div>
+
+            {/* ページ指定モード */}
+            {inputMode === 'page' && (
+              <div style={{ ...glass, padding: 20, marginBottom: 16 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', marginBottom: 12 }}>ページ範囲から出題</h3>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 10 }}>
+                  <input type="text" placeholder="6-1" value={newFrom} onChange={e => setNewFrom(autoConvertPage(e.target.value))} style={inputSt} />
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#718096' }}>〜</span>
+                  <input type="text" placeholder="6-3" value={newTo} onChange={e => setNewTo(autoConvertPage(e.target.value))} style={inputSt} />
+                </div>
+                {newFrom && (
+                  <input type="text" value={newRef} onChange={e => setNewRef(e.target.value)}
+                    style={{ width: '100%', textAlign: 'center', fontSize: 13, color: cc.accent, fontWeight: 700, marginBottom: 10, padding: '6px 12px', background: cc.light, borderRadius: 8, border: `1px solid ${cc.accent}30`, outline: 'none', boxSizing: 'border-box' }} />
+                )}
+                <button onClick={quizByPage} style={{ width: '100%', padding: '10px 0', background: cc.accent, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>出題する</button>
+              </div>
+            )}
+
+            {/* キーワード出題モード */}
+            {inputMode === 'keyword' && (
+              <div style={{ ...glass, padding: 20, marginBottom: 16 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', marginBottom: 12 }}>キーワードから出題（AB ランク）</h3>
+                <input type="text" placeholder="例: 標準原価計算、CVP、退職給付..." value={keyword} onChange={e => setKeyword(e.target.value)}
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #d0d8e0', borderRadius: 8, fontSize: 14, outline: 'none', background: '#f8fafc', boxSizing: 'border-box', marginBottom: 12 }} />
+                <div style={{ maxHeight: 360, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {filteredTopics.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: 20, color: '#a0aec0', fontSize: 13 }}>
+                      {Object.keys(CHAPTER_MAP[category.id] || {}).length === 0 ? 'この科目のデータは準備中です' : '該当なし'}
+                    </div>
+                  )}
+                  {filteredTopics.map((topic, i) => {
+                    const isSec = !!topic.secName;
+                    return (
+                      <button key={i} onClick={() => quizByTopic(topic)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: isSec ? '8px 12px 8px 24px' : '10px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, cursor: 'pointer', textAlign: 'left' }}>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: topic.rank === 'A' ? '#e53e3e' : '#dd6b20', background: topic.rank === 'A' ? '#fff5f5' : '#fffaf0', padding: '2px 8px', borderRadius: 6, minWidth: 24, textAlign: 'center' }}>{topic.rank}</span>
+                        <span style={{ flex: 1, fontSize: isSec ? 12 : 13, fontWeight: isSec ? 600 : 700, color: isSec ? '#4a5568' : '#2d3748' }}>{topic.label}</span>
+                        <span style={{ fontSize: 12, color: cc.accent, fontWeight: 700 }}>出題→</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 出題履歴 */}
+            {entries.length > 0 && (
+              <div style={{ ...glass, padding: 16, marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>出題履歴（{entries.length}件）</h3>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: dueCount > 0 ? '#e53e3e' : '#38a169', background: dueCount > 0 ? '#fff5f5' : '#f0fff4', padding: '4px 12px', borderRadius: 10 }}>
+                    {dueCount > 0 ? `復習対象 ${dueCount}件` : '全て完了'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {sortedEntries.map((entry, idx) => {
+                    const ri = getRatingInfo(entry.id);
+                    const isExpanded = expandedId === entry.id;
+                    return (
+                      <div key={entry.id} style={{ background: ri.isDue ? '#fffbf0' : '#f8fafc', borderRadius: 10, border: ri.isDue ? `2px solid ${cc.accent}40` : '1px solid #e2e8f0', overflow: 'hidden' }}>
+                        <div
+                          onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                          style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                          <span style={{ fontSize: 11, color: '#a0aec0', fontWeight: 700, minWidth: 20 }}>{idx + 1}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#2d3748', lineHeight: 1.4 }}>{entry.ref || (entry.pageFrom + ' 〜 ' + entry.pageTo)}</div>
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: ri.color, background: ri.color + '18', padding: '2px 8px', borderRadius: 10, whiteSpace: 'nowrap' }}>{ri.label}</span>
+                          {ri.isDue && (
+                            <button onClick={(e) => { e.stopPropagation(); setQuizEntry(entry); }}
+                              style={{ padding: '3px 10px', background: cc.accent, color: '#fff', border: 'none', borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>再出題</button>
+                          )}
+                          <span style={{ fontSize: 12, color: '#a0aec0', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+                        </div>
+                        {isExpanded && (
+                          <div style={{ padding: '0 12px 10px 12px', display: 'flex', gap: 6 }}>
+                            <button onClick={(e) => { e.stopPropagation(); setQuizEntry(entry); }}
+                              style={{ flex: 1, padding: '7px 0', background: cc.accent, color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>出題する</button>
+                            <button onClick={(e) => { e.stopPropagation(); if(confirm('削除しますか？')) deleteEntry(entry.id); }}
+                              style={{ padding: '7px 14px', background: 'none', border: '1px solid #fed7d7', borderRadius: 8, fontSize: 11, color: '#e53e3e', fontWeight: 700, cursor: 'pointer' }}>削除</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    const App = () => {
+      const [selected, setSelected] = useState(null);
+      const [recallData, setRecallData] = useState(null);
+
+      if (recallData) {
+        return <RecallStudy problem={recallData.problem} allDue={recallData.allDue} startIdx={recallData.startIdx} onBack={() => setRecallData(null)} />;
+      }
+
+      if (!selected) {
+        return <CategorySelect onSelect={setSelected} onStartRecall={(data) => setRecallData(data)} />;
+      }
+
+      if (selected.hasData) {
+        return <CalculationStudy category={selected} onBack={() => setSelected(null)} />;
+      } else {
+        return <TheoryStudy category={selected} onBack={() => setSelected(null)} />;
+      }
+    };
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
