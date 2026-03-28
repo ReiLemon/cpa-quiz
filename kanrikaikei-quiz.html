@@ -352,6 +352,7 @@ mark.hl.hl-blue{background:#90caf9}
     </div>
     <div class="btn-row">
       <button class="pdf-btn2" onclick="genMyTextbook()">📄 不正解問題一覧PDF（章→節→問題）</button>
+      <button class="pdf-btn2" onclick="downloadBookmarkPDF()">★ ブックマーク問題一覧PDF</button>
     </div>
 
     <div class="stbl" id="sh-tbl" style="display:none">
@@ -1525,6 +1526,145 @@ function genMyTextbook(){
     +'</style></head><body><div class="wrap">'
     +'<div class="title-bar"><h1>管理会計論 不正解問題一覧</h1>'
     +'<div class="meta">'+ds+' ／ 不正解 '+totalBad+'問 ／ マスター '+countMastered()+'問</div></div>'
+    +body
+    +'</div></body></html>';
+  var w=window.open('','_blank');
+  if(w){w.document.write(doc);w.document.close();setTimeout(function(){w.print();},600);}
+  else alert('ポップアップを許可してください。');
+}
+
+function downloadBookmarkPDF(){
+  var bookmarkIds=Object.keys(bookmarks).map(Number);
+  if(bookmarkIds.length===0){alert('ブックマークした問題がありません');return;}
+
+  // ブックマークされた問題だけフィルタ
+  var bookmarkSet={};
+  bookmarkIds.forEach(function(id){bookmarkSet[id]=true;});
+  var bookmarkQs=QUESTIONS.filter(function(q){return bookmarkSet[q.id];});
+
+  // PAGESから節名マップを構築: chNum+':'+secNum → 節名
+  var secNameMap={};
+  Object.keys(PAGES).forEach(function(key){
+    var p=PAGES[key];if(!p.chapter)return;
+    var chM=p.chapter.match(/第(\d+)章/);if(!chM)return;
+    var secM=key.match(/^(\d+)/);if(!secM)return;
+    secNameMap[chM[1]+':'+secM[1]]=key;
+  });
+
+  // 章→節→問題でグループ化
+  var chapters={};var chOrder=[];
+  bookmarkQs.forEach(function(q){
+    var ch=q.chapter;
+    var qn=QNUM[q.id]||'';
+    var secNum=qn?qn.split('-')[0]:'0';
+    if(!chapters[ch]){chapters[ch]={sections:{},secOrder:[]};chOrder.push(ch);}
+    var cObj=chapters[ch];
+    if(!cObj.sections[secNum]){cObj.sections[secNum]=[];cObj.secOrder.push(secNum);}
+    cObj.sections[secNum].push(q);
+  });
+  // 章を番号順でソート
+  chOrder.sort(function(a,b){
+    var na=parseInt((a.match(/第(\d+)章/)||[0,0])[1]);
+    var nb=parseInt((b.match(/第(\d+)章/)||[0,0])[1]);
+    return na-nb;
+  });
+
+  var now=new Date();
+  var ds=now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日';
+
+  // 本文HTML生成
+  var body='';
+  chOrder.forEach(function(ch){
+    var cObj=chapters[ch];
+    var chM=ch.match(/第(\d+)章/);var chNum=chM?chM[1]:'';
+    // 章内のブックマーク数
+    var chBkmCnt=0;
+    cObj.secOrder.forEach(function(sn){chBkmCnt+=cObj.sections[sn].length;});
+    // ページ範囲
+    var allPm=[];
+    cObj.secOrder.forEach(function(sn){
+      cObj.sections[sn].forEach(function(q){if(q.page_marker)allPm.push(q.page_marker);});
+    });
+    var pmRange=allPm.length?('P'+allPm[0]+(allPm.length>1?' 〜 P'+allPm[allPm.length-1]:'')):'';
+
+    body+='<div class="ch"><div class="ch-t">'+ch+'</div>'
+      +'<div class="ch-p">'+pmRange+'　ブックマーク '+chBkmCnt+'問</div></div>';
+
+    // 節順でソート
+    var sortedSecs=cObj.secOrder.slice().sort(function(a,b){return parseInt(a)-parseInt(b);});
+    sortedSecs.forEach(function(secNum){
+      var qs=cObj.sections[secNum];
+      // 問題番号順ソート
+      qs.sort(function(a,b){
+        var qa=QNUM[a.id]||'';var qb=QNUM[b.id]||'';
+        var na=parseInt((qa.split('-')[1])||'0');var nb=parseInt((qb.split('-')[1])||'0');
+        return na-nb;
+      });
+      // 節名をPAGESから取得
+      var secKey=secNameMap[chNum+':'+secNum]||'';
+      var secTitle=secKey?secKey.replace(/^\d+\./,''):'第'+secNum+'節';
+      // ページ範囲
+      var secPm=[];
+      qs.forEach(function(q){if(q.page_marker)secPm.push(q.page_marker);});
+      var secPmStr=secPm.length?('P'+secPm[0]+(secPm.length>1&&secPm[0]!==secPm[secPm.length-1]?'〜P'+secPm[secPm.length-1]:'')):'';
+
+      body+='<div class="sec">'
+        +'<div class="sec-h"><div class="sec-t">第'+secNum+'節 '+secTitle+'</div><div class="sec-pg">'+secPmStr+'</div></div>'
+        +'<div class="hdr"><span>問題</span><span>級</span><span>問題文</span><span>回数</span><span>日付</span></div>';
+      qs.forEach(function(q){
+        var qn=QNUM[q.id]||'';
+        var wCnt=wrongDB[q.id]||0;var uCnt=unknownDB[q.id]||0;var cnt=wCnt+uCnt;
+        // 最終回答日
+        var aRaw=answeredDB[q.id];
+        var dtStr='-';
+        if(aRaw){var d=new Date(aRaw);dtStr=(d.getMonth()+1)+'/'+d.getDate();}
+        var lvBg=q.level==='A'?'#ffebee':'#fff3e0';
+        var lvC=q.level==='A'?'#c62828':'#e65100';
+        var txt=q.question||'';if(txt.length>60)txt=txt.substring(0,60)+'…';
+        var hasCls=cnt>0?' has':'';
+        body+='<div class="row">'
+          +'<span class="qn">問題'+qn+'</span>'
+          +'<span class="lv" style="background:'+lvBg+';color:'+lvC+'">'+q.level+'</span>'
+          +'<div class="qt">'+txt+'</div>'
+          +'<div class="cnt'+hasCls+'"><b>'+cnt+'</b>回</div>'
+          +'<div class="dt'+(cnt>0?' has':'')+'">'+dtStr+'</div>'
+          +'</div>';
+      });
+      body+='</div>';
+    });
+  });
+
+  var totalBkm=bookmarkIds.length;
+  var doc='<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>管理会計論 ブックマーク問題一覧</title>'
+    +'<style>'
+    +'*{margin:0;padding:0;box-sizing:border-box}'
+    +'body{font-family:"Hiragino Kaku Gothic ProN","Meiryo",sans-serif;background:#f5f5f5;color:#222;font-size:11px;line-height:1.4}'
+    +'.wrap{max-width:700px;margin:0 auto;padding:8px}'
+    +'.title-bar{text-align:center;padding:16px 0 12px;margin-bottom:8px}'
+    +'.title-bar h1{font-size:16px;color:#e65100;margin-bottom:4px}'
+    +'.title-bar .meta{font-size:10px;color:#888}'
+    +'.ch{background:linear-gradient(135deg,#e65100,#ff9800);color:#fff;padding:10px 14px;border-radius:8px;margin-bottom:6px}'
+    +'.ch-t{font-size:15px;font-weight:800}'
+    +'.ch-p{font-size:10px;color:#ffe0b2;margin-top:1px}'
+    +'.sec{background:#fff;border-radius:6px;margin-bottom:5px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.06)}'
+    +'.sec-h{background:#fff3e0;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ffe0b2}'
+    +'.sec-t{font-size:12px;font-weight:700;color:#e65100}'
+    +'.sec-pg{font-size:9px;color:#ff9800}'
+    +'.hdr{display:grid;grid-template-columns:56px 24px 1fr 36px 36px;padding:3px 10px;gap:5px;font-size:8px;color:#999;font-weight:600;border-bottom:1px solid #e0e0e0;background:#fafafa}'
+    +'.row{display:grid;grid-template-columns:56px 24px 1fr 36px 36px;align-items:start;padding:4px 10px;border-bottom:1px solid #f5f5f5;gap:5px}'
+    +'.row:last-child{border-bottom:none}'
+    +'.qn{font-weight:700;color:#333;font-size:11px;white-space:nowrap;padding-top:1px}'
+    +'.lv{font-size:9px;font-weight:700;padding:2px 0;border-radius:8px;text-align:center;line-height:1}'
+    +'.qt{font-size:10px;color:#444;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}'
+    +'.cnt{font-size:9px;text-align:center;color:#999;padding-top:1px}'
+    +'.cnt.has b{color:#c62828}'
+    +'.cnt b{font-size:11px;display:block;font-weight:800}'
+    +'.dt{font-size:9px;text-align:center;color:#999;padding-top:1px}'
+    +'.dt.has{color:#c62828;font-weight:600}'
+    +'@media print{.sec{page-break-inside:avoid}}'
+    +'</style></head><body><div class="wrap">'
+    +'<div class="title-bar"><h1>管理会計論 ブックマーク問題一覧</h1>'
+    +'<div class="meta">'+ds+' ／ ブックマーク '+totalBkm+'問</div></div>'
     +body
     +'</div></body></html>';
   var w=window.open('','_blank');

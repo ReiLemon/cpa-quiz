@@ -375,7 +375,8 @@ mark.hl.hl-blue{background:#90caf9}
       <div class="an-stat"><div class="an-num" id="an-slow20" style="color:#e65100">0</div><div class="an-lbl">⏱20秒超え</div></div>
     </div>
     <div class="btn-row">
-      <button class="pdf-btn2" onclick="genMyTextbook()">📚 マイテキストPDF（テキスト①②③順）</button>
+      <button class="pdf-btn2" onclick="downloadWrongPDF()">📄 不正解問題一覧PDF（章→節→問題）</button>
+      <button class="pdf-btn2" onclick="downloadBookmarkPDF()">★ ブックマーク問題一覧PDF</button>
     </div>
 
     <div class="stbl" id="sh-tbl" style="display:none">
@@ -1420,102 +1421,6 @@ function genPDF(){
   else alert('ポップアップを許可してください。');
 }
 
-// ===== PDF: マイテキスト（テキスト①②③順・間違えた節のみ） =====
-function genMyTextbook(){
-  var wrongIds=Object.keys(wrongDB).map(Number);
-  var unknownIds=Object.keys(unknownDB).map(Number);
-  var allBadIds=[];
-  wrongIds.forEach(function(id){if(allBadIds.indexOf(id)<0) allBadIds.push(id);});
-  unknownIds.forEach(function(id){if(allBadIds.indexOf(id)<0) allBadIds.push(id);});
-  if(allBadIds.length===0){alert('まだ間違えた問題がありません。クイズを解いてから生成してください。');return;}
-
-  var now=new Date(); var ds=now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日';
-  var mastered=countMastered();
-  var totalBad=allBadIds.length;
-
-  var bodyHtml='';
-  var currentVol='';
-
-  SEC_ORDER.forEach(function(grp){
-    // collect bad questions for this group
-    var grpBadQs=QUESTIONS.filter(function(q){
-      return allBadIds.indexOf(q.id)>=0 && q.chapter===grp.chapter;
-    });
-    if(grpBadQs.length===0) return;
-
-    // volume header
-    if(grp.vol!==currentVol){
-      currentVol=grp.vol;
-      bodyHtml+='<div style="page-break-before:'+(currentVol==='テキスト①'?'auto':'always')
-        +';background:linear-gradient(135deg,#0d47a1,#1565c0);color:#fff;padding:16px 20px;border-radius:10px;margin-bottom:20px">'
-        +'<div style="font-size:22pt;font-weight:700">'+grp.vol+'</div>'
-        +'<div style="font-size:10pt;opacity:.8;margin-top:4px">CPA会計学院 監査論テキスト / 自分の弱点まとめ</div></div>';
-    }
-
-    // chapter header
-    bodyHtml+='<div style="background:#e8eaf6;border-left:5px solid #1a237e;padding:8px 14px;margin-bottom:12px;border-radius:0 6px 6px 0">'
-      +'<strong style="font-size:13pt;color:#1a1a2e">'+grp.chapter+'</strong></div>';
-
-    // sections
-    grp.sections.forEach(function(sc){
-      var scQs=grpBadQs.filter(function(q){return q.section===sc;});
-      if(scQs.length===0) return;
-      var pi=PAGES[sc];
-      var concept=SEC_CONCEPTS[sc]||'';
-      bodyHtml+='<div style="border:1px solid #ddd;border-radius:8px;margin-bottom:14px;page-break-inside:avoid">'
-        // section title bar
-        +'<div style="background:#f5f5f5;padding:8px 14px;border-bottom:1px solid #ddd;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center">'
-        +'<strong style="font-size:11pt;color:#1a1a2e">'+sc+'</strong>'
-        +(pi?'<span style="font-size:9pt;color:#1a237e;font-weight:600">📖 '+pi.vol+' '+pi.page+'</span>':'')
-        +'</div>'
-        // key concept box
-        +(concept?'<div style="background:#fffde7;border-bottom:1px solid #fdd835;padding:8px 14px;font-size:9pt;line-height:1.8;color:#555">'
-          +'<strong style="color:#e65100">⚡ ポイント</strong>　'+concept+'</div>':'')
-        // questions
-        +'<div style="padding:10px 14px">'
-        +scQs.map(function(q,i){
-          var isUk=unknownDB[q.id]; var isNg=wrongDB[q.id];
-          var cnt=(wrongDB[q.id]||0)+(unknownDB[q.id]||0);
-          var srsE=srsDB[q.id];
-          var srsStr=srsE&&srsE.level===5?'✨マスター':(srsE?'連続正解'+(srsE.streak||0)+'/3':'未SRS');
-          var memo=memoMap[q.id];
-          return '<div style="border-top:'+(i>0?'1px solid #f0f0f0':'none')+';padding:'+(i>0?'10px 0 0':'0 0 8px')+'">'
-            +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;flex-wrap:wrap">'
-            +'<span style="font-size:8pt;font-weight:700;color:'+(q.level==='A'?'#c62828':q.level==='B'?'#e65100':'#2e7d32')+'">'+q.level+'論点</span>'
-            +'<span style="font-size:8pt;color:'+(isNg?'#c62828':'#e65100')+';font-weight:700">'+(isNg?'❌':'')+( isUk?'？':'')+'　'+cnt+'回</span>'
-            +'<span style="font-size:8pt;color:#1565c0">'+srsStr+'</span></div>'
-            +'<div style="font-size:10pt;line-height:1.8;margin-bottom:5px">'+q.question+'</div>'
-            +'<div style="background:#ffebee;border-left:3px solid #e53935;padding:4px 10px;font-size:9pt;margin-bottom:4px">正解: '+q.answer+'</div>'
-            +'<div style="background:#f9f9f9;padding:5px 10px;font-size:9pt;line-height:1.7;color:#555">'+(q.explanation||'解説なし')+'</div>'
-            +(memo?'<div style="background:#fffde7;border:1px solid #fdd835;padding:4px 10px;font-size:9pt;margin-top:4px">📝 '+memo+'</div>':'')
-            // blank line for handwriting
-            +'<div style="border-bottom:1px dashed #ccc;margin-top:6px;height:18px"></div>'
-            +'</div>';
-        }).join('')
-        +'</div></div>';
-    });
-  });
-
-  var doc='<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>監査論 マイテキスト</title>'
-    +'<style>body{font-family:"Hiragino Kaku Gothic ProN","Meiryo",sans-serif;font-size:10pt;color:#222;margin:15mm 14mm;line-height:1.6}'
-    +'@media print{.np{display:none}}</style></head><body>'
-    +'<div style="text-align:center;padding:30px 0;border-bottom:3px solid #0a2463;margin-bottom:24px">'
-    +'<div style="font-size:28pt;font-weight:700;color:#1a1a2e">監査論 マイテキスト</div>'
-    +'<div style="font-size:11pt;color:#666;margin-top:8px">間違えた問題だけを抽出 ／ テキスト①②③順整理</div>'
-    +'<div style="font-size:10pt;color:#888;margin-top:6px">作成日: '+ds
-    +' ／ 弱点問題: '+totalBad+'問 ／ ✨マスター: '+mastered+'問</div>'
-    +'<div style="margin-top:16px;display:inline-block;background:#f0f4ff;border:2px solid #0a2463;border-radius:8px;padding:10px 24px;font-size:10pt">'
-    +'<strong style="color:#0a2463">使い方：</strong> 1日1周を目標にテキスト①→②→③の順に通読。⚡ポイントを先に読んでから問題を解き直す。'
-    +'📝メモ欄に「なぜ間違えたか」を書き込んで記憶を定着させる。</div></div>'
-    +bodyHtml
-    +'<div class="np" style="text-align:center;margin-top:30px">'
-    +'<button onclick="window.print()" style="background:#0a2463;color:white;border:none;padding:12px 28px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:600">🖨 印刷 / PDFとして保存</button>'
-    +'<p style="margin-top:8px;font-size:11px;color:#888">印刷ダイアログで「PDFとして保存」を選択</p></div>'
-    +'</body></html>';
-  var w=window.open('','_blank');
-  if(w){w.document.write(doc);w.document.close();}
-  else alert('ポップアップを許可してください。');
-}
 
 // ===== SCREEN =====
 function showTab(name){
@@ -1686,55 +1591,202 @@ function hide(id){var el=gi(id);if(el)el.style.display='none';}
   function hashStr(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return Math.abs(h);}
 })();
 
+function downloadBookmarkPDF(){
+  var bkmIds=Object.keys(bookmarks).map(Number);
+  if(bkmIds.length===0){alert('ブックマークした問題がありません');return;}
+  var bkmQs=QUESTIONS.filter(function(q){return bookmarks[q.id];});
+  var chapters={};var chOrder=[];
+  bkmQs.forEach(function(q){
+    var ch=q.chapter;
+    if(!chapters[ch]){chapters[ch]={sections:{},secOrder:[]};chOrder.push(ch);}
+    var cObj=chapters[ch];
+    var secNum=q.section.match(/第(\d+)節/)?q.section.match(/第(\d+)節/)[1]:'0';
+    if(!cObj.sections[secNum]){cObj.sections[secNum]=[];cObj.secOrder.push(secNum);}
+    cObj.sections[secNum].push(q);
+  });
+  chOrder.sort(function(a,b){
+    var na=parseInt((a.match(/第(\d+)章/)||[0,0])[1]);
+    var nb=parseInt((b.match(/第(\d+)章/)||[0,0])[1]);
+    return na-nb;
+  });
+  var now=new Date();
+  var ds=now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日';
+  var body='';
+  chOrder.forEach(function(ch){
+    var cObj=chapters[ch];
+    var chBadCnt=0;
+    cObj.secOrder.forEach(function(sn){chBadCnt+=cObj.sections[sn].length;});
+    body+='<div class="ch"><div class="ch-t">'+ch+'</div>'
+      +'<div class="ch-p">ブックマーク '+chBadCnt+'問</div></div>';
+    var sortedSecs=cObj.secOrder.slice().sort(function(a,b){return parseInt(a)-parseInt(b);});
+    sortedSecs.forEach(function(secNum){
+      var qs=cObj.sections[secNum];
+      qs.sort(function(a,b){return a.id-b.id;});
+      var secTitle='第'+secNum+'節';
+      body+='<div class="sec">'
+        +'<div class="sec-h"><div class="sec-t">'+secTitle+'</div></div>'
+        +'<div class="hdr"><span>問題</span><span>級</span><span>問題文</span><span>回数</span><span>日付</span></div>';
+      qs.forEach(function(q){
+        var wCnt=wrongDB[q.id]||0;var uCnt=unknownDB[q.id]||0;var cnt=wCnt+uCnt;
+        var aRaw=answeredDB[q.id];var dtStr='-';
+        if(aRaw){var d=new Date(aRaw);dtStr=(d.getMonth()+1)+'/'+d.getDate();}
+        var lvBg=q.level==='A'?'#ffebee':'#fff3e0';
+        var lvC=q.level==='A'?'#c62828':'#e65100';
+        var txt=q.question||'';if(txt.length>60)txt=txt.substring(0,60)+'…';
+        body+='<div class="row">'
+          +'<span class="qn">Q'+q.id+'</span>'
+          +'<span class="lv" style="background:'+lvBg+';color:'+lvC+'">'+q.level+'</span>'
+          +'<div class="qt">'+txt+'</div>'
+          +'<div class="cnt"><b>'+cnt+'</b>回</div>'
+          +'<div class="dt">'+dtStr+'</div></div>';
+      });
+      body+='</div>';
+    });
+  });
+  var totalBkm=bkmIds.length;
+  var doc='<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>財務会計論（理論） ブックマーク問題一覧</title>'
+    +'<style>*{margin:0;padding:0;box-sizing:border-box}'
+    +'body{font-family:"Hiragino Kaku Gothic ProN","Meiryo",sans-serif;background:#f5f5f5;color:#222;font-size:11px;line-height:1.4}'
+    +'.wrap{max-width:700px;margin:0 auto;padding:8px}'
+    +'.title-bar{text-align:center;padding:16px 0 12px;margin-bottom:8px}'
+    +'.title-bar h1{font-size:16px;color:#1a237e;margin-bottom:4px}'
+    +'.title-bar .meta{font-size:10px;color:#888}'
+    +'.ch{background:linear-gradient(135deg,#1a237e,#283593);color:#fff;padding:10px 14px;border-radius:8px;margin-bottom:6px}'
+    +'.ch-t{font-size:15px;font-weight:800}'
+    +'.ch-p{font-size:10px;color:#b3e5fc;margin-top:1px}'
+    +'.sec{background:#fff;border-radius:6px;margin-bottom:5px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.06)}'
+    +'.sec-h{background:#e8eaf6;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #c5cae9}'
+    +'.sec-t{font-size:12px;font-weight:700;color:#1a237e}'
+    +'.hdr{display:grid;grid-template-columns:56px 24px 1fr 36px 36px;padding:3px 10px;gap:5px;font-size:8px;color:#999;font-weight:600;border-bottom:1px solid #e0e0e0;background:#fafafa}'
+    +'.row{display:grid;grid-template-columns:56px 24px 1fr 36px 36px;align-items:start;padding:4px 10px;border-bottom:1px solid #f5f5f5;gap:5px}'
+    +'.row:last-child{border-bottom:none}'
+    +'.qn{font-weight:700;color:#333;font-size:11px;white-space:nowrap;padding-top:1px}'
+    +'.lv{font-size:9px;font-weight:700;padding:2px 0;border-radius:8px;text-align:center;line-height:1}'
+    +'.qt{font-size:10px;color:#444;line-height:1.35}'
+    +'.cnt{font-size:9px;text-align:center;color:#999;padding-top:1px}'
+    +'.cnt b{font-size:11px;display:block;font-weight:800}'
+    +'.dt{font-size:9px;text-align:center;color:#999;padding-top:1px}'
+    +'@media print{.sec{page-break-inside:avoid}}'
+    +'</style></head><body><div class="wrap">'
+    +'<div class="title-bar"><h1>★ 財務会計論（理論） ブックマーク問題一覧</h1>'
+    +'<div class="meta">'+ds+' ／ ブックマーク '+totalBkm+'問</div></div>'
+    +body+'</div></body></html>';
+  var w=window.open('','_blank');if(w){w.document.write(doc);w.document.close();w.focus();setTimeout(function(){w.print();},500);}
+  else alert('ポップアップを許可してください。');
+}
+
 function downloadWrongPDF(){
   var wrongIds=Object.keys(wrongDB).map(Number);
   var unknownIds=Object.keys(unknownDB).map(Number);
   var allBadIds=[];
   wrongIds.forEach(function(id){if(allBadIds.indexOf(id)<0)allBadIds.push(id);});
   unknownIds.forEach(function(id){if(allBadIds.indexOf(id)<0)allBadIds.push(id);});
-  var badQs=QUESTIONS.filter(function(q){return allBadIds.indexOf(q.id)>=0;})
-    .sort(function(a,b){return((wrongDB[b.id]||0)+(unknownDB[b.id]||0))-((wrongDB[a.id]||0)+(unknownDB[a.id]||0));});
-  if(badQs.length===0){alert('不正解の問題がありません');return;}
-  function fmtCh(ch){var m=ch.match(/第(\d+)章\s*(.*)/);return m?m[1]+'.'+m[2]:ch;}
-  // catch-all節を特定（章内で最大問題数の節、15問超かつ他の節がある場合）
-  var chSecCnt={};
-  QUESTIONS.forEach(function(q){var k=q.chapter+'||'+q.section;chSecCnt[k]=(chSecCnt[k]||0)+1;});
-  var chSecs={};
-  Object.keys(chSecCnt).forEach(function(k){var p=k.split('||');var ch=p[0];if(!chSecs[ch])chSecs[ch]=[];chSecs[ch].push({sec:p[1],cnt:chSecCnt[k]});});
-  var catchAll={};
-  Object.keys(chSecs).forEach(function(ch){var ss=chSecs[ch];if(ss.length<=1)return;var mx=ss[0];ss.forEach(function(s){if(s.cnt>mx.cnt)mx=s;});if(mx.cnt>15)catchAll[ch+'||'+mx.sec]=true;});
-  // 問題番号を計算：catch-all問題は直前のspecific節に割り当て
-  var lastSpec={};var secCount={};var qNumMap={};var qSecMap={};
-  QUESTIONS.forEach(function(q){
-    var key=q.chapter+'||'+q.section;
-    if(catchAll[key]){
-      var assigned=lastSpec[q.chapter]||q.section;
-      var akey=q.chapter+'||'+assigned;
-      secCount[akey]=(secCount[akey]||0)+1;
-      qNumMap[q.id]='問題'+secCount[akey];
-      qSecMap[q.id]=assigned;
-    }else{
-      lastSpec[q.chapter]=q.section;
-      secCount[key]=(secCount[key]||0)+1;
-      qNumMap[q.id]='問題'+secCount[key];
-      qSecMap[q.id]=q.section;
-    }
+  if(allBadIds.length===0){alert('不正解の問題がありません');return;}
+
+  var badQs=QUESTIONS.filter(function(q){return allBadIds.indexOf(q.id)>=0;});
+
+  // 章→節→問題でグループ化
+  var chapters={};var chOrder=[];
+  badQs.forEach(function(q){
+    var ch=q.chapter;
+    if(!chapters[ch]){chapters[ch]={sections:{},secOrder:[]};chOrder.push(ch);}
+    var cObj=chapters[ch];
+    var secNum=q.section.match(/第(\d+)節/)?q.section.match(/第(\d+)節/)[1]:'0';
+    if(!cObj.sections[secNum]){cObj.sections[secNum]=[];cObj.secOrder.push(secNum);}
+    cObj.sections[secNum].push(q);
   });
+
+  // 章を番号順でソート
+  chOrder.sort(function(a,b){
+    var na=parseInt((a.match(/第(\d+)章/)||[0,0])[1]);
+    var nb=parseInt((b.match(/第(\d+)章/)||[0,0])[1]);
+    return na-nb;
+  });
+
   var now=new Date();
-  var dateStr=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate();
-  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>財務会計論（理論） 不正解一覧 - '+dateStr+'</title><style>body{font-family:"Hiragino Sans","Meiryo","Noto Sans JP",sans-serif;padding:20px;font-size:12px}h1{font-size:18px;color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:8px}table{border-collapse:collapse;width:100%;margin-top:12px}th{background:#1a237e;color:#fff;padding:8px 6px;font-size:11px;text-align:left}td{border:1px solid #ccc;padding:6px;font-size:11px;vertical-align:top}tr:nth-child(even){background:#f5f5f5}.cnt{text-align:center;font-weight:700}.date{text-align:center}@media print{body{padding:10px}}</style></head><body>';
-  html+='<h1>財務会計論（理論） 不正解・不明問題一覧</h1>';
-  html+='<p>出力日: '+dateStr+' ／ 問題数: '+badQs.length+'問</p>';
-  html+='<table><thead><tr><th>章</th><th>節</th><th>問題番号</th><th>不正解</th><th>不明</th><th>初回回答日</th><th>テキストページ</th></tr></thead><tbody>';
-  badQs.forEach(function(q,i){
-    var wCnt=wrongDB[q.id]||0;var uCnt=unknownDB[q.id]||0;
-    var aDate=answeredDB[q.id]?new Date(answeredDB[q.id]):null;
-    var aStr=aDate?(aDate.getFullYear()+'/'+(aDate.getMonth()+1)+'/'+aDate.getDate()):'—';
-    var sec=qSecMap[q.id]||q.section;var pi=PAGES[sec];var pgStr=pi?(pi.vol+' '+pi.page):'—';
-    html+='<tr><td>'+fmtCh(q.chapter)+'</td><td>'+sec+'</td><td class="cnt" style="font-weight:700">'+(qNumMap[q.id]||'—')+'</td><td class="cnt" style="color:#c62828">'+wCnt+'</td><td class="cnt" style="color:#e65100">'+uCnt+'</td><td class="date">'+aStr+'</td><td>'+pgStr+'</td></tr>';
+  var ds=now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日';
+
+  // 本文HTML生成
+  var body='';
+  chOrder.forEach(function(ch){
+    var cObj=chapters[ch];
+    var chM=ch.match(/第(\d+)章/);var chNum=chM?chM[1]:'';
+    // 章内の全間違え数
+    var chBadCnt=0;
+    cObj.secOrder.forEach(function(sn){chBadCnt+=cObj.sections[sn].length;});
+
+    body+='<div class="ch"><div class="ch-t">'+ch+'</div>'
+      +'<div class="ch-p">不正解 '+chBadCnt+'問</div></div>';
+
+    // 節順でソート
+    var sortedSecs=cObj.secOrder.slice().sort(function(a,b){return parseInt(a)-parseInt(b);});
+    sortedSecs.forEach(function(secNum){
+      var qs=cObj.sections[secNum];
+      // 問題ID順ソート
+      qs.sort(function(a,b){return a.id-b.id;});
+      // 節のタイトル
+      var secTitle='第'+secNum+'節';
+
+      body+='<div class="sec">'
+        +'<div class="sec-h"><div class="sec-t">'+secTitle+'</div></div>'
+        +'<div class="hdr"><span>問題</span><span>級</span><span>問題文</span><span>回数</span><span>日付</span></div>';
+      qs.forEach(function(q){
+        var wCnt=wrongDB[q.id]||0;var uCnt=unknownDB[q.id]||0;var cnt=wCnt+uCnt;
+        // 最終間違え日
+        var aRaw=answeredDB[q.id];
+        var dtStr='-';
+        if(aRaw){var d=new Date(aRaw);dtStr=(d.getMonth()+1)+'/'+d.getDate();}
+        var lvBg=q.level==='A'?'#ffebee':'#fff3e0';
+        var lvC=q.level==='A'?'#c62828':'#e65100';
+        var txt=q.question||'';if(txt.length>60)txt=txt.substring(0,60)+'…';
+        var hasCls=cnt>0?' has':'';
+        body+='<div class="row">'
+          +'<span class="qn">Q'+q.id+'</span>'
+          +'<span class="lv" style="background:'+lvBg+';color:'+lvC+'">'+q.level+'</span>'
+          +'<div class="qt">'+txt+'</div>'
+          +'<div class="cnt'+hasCls+'"><b>'+cnt+'</b>回</div>'
+          +'<div class="dt'+(cnt>0?' has':'')+'">'+dtStr+'</div>'
+          +'</div>';
+      });
+      body+='</div>';
+    });
   });
-  html+='</tbody></table></body></html>';
-  var w=window.open('','_blank');w.document.write(html);w.document.close();w.focus();setTimeout(function(){w.print();},500);
+
+  var totalBad=allBadIds.length;
+  var doc='<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>財務会計論（理論） 不正解問題一覧</title>'
+    +'<style>'
+    +'*{margin:0;padding:0;box-sizing:border-box}'
+    +'body{font-family:"Hiragino Kaku Gothic ProN","Meiryo",sans-serif;background:#f5f5f5;color:#222;font-size:11px;line-height:1.4}'
+    +'.wrap{max-width:700px;margin:0 auto;padding:8px}'
+    +'.title-bar{text-align:center;padding:16px 0 12px;margin-bottom:8px}'
+    +'.title-bar h1{font-size:16px;color:#1a237e;margin-bottom:4px}'
+    +'.title-bar .meta{font-size:10px;color:#888}'
+    +'.ch{background:linear-gradient(135deg,#1a237e,#283593);color:#fff;padding:10px 14px;border-radius:8px;margin-bottom:6px}'
+    +'.ch-t{font-size:15px;font-weight:800}'
+    +'.ch-p{font-size:10px;color:#b3e5fc;margin-top:1px}'
+    +'.sec{background:#fff;border-radius:6px;margin-bottom:5px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.06)}'
+    +'.sec-h{background:#e8eaf6;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #c5cae9}'
+    +'.sec-t{font-size:12px;font-weight:700;color:#1a237e}'
+    +'.hdr{display:grid;grid-template-columns:56px 24px 1fr 36px 36px;padding:3px 10px;gap:5px;font-size:8px;color:#999;font-weight:600;border-bottom:1px solid #e0e0e0;background:#fafafa}'
+    +'.row{display:grid;grid-template-columns:56px 24px 1fr 36px 36px;align-items:start;padding:4px 10px;border-bottom:1px solid #f5f5f5;gap:5px}'
+    +'.row:last-child{border-bottom:none}'
+    +'.qn{font-weight:700;color:#333;font-size:11px;white-space:nowrap;padding-top:1px}'
+    +'.lv{font-size:9px;font-weight:700;padding:2px 0;border-radius:8px;text-align:center;line-height:1}'
+    +'.qt{font-size:10px;color:#444;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}'
+    +'.cnt{font-size:9px;text-align:center;color:#999;padding-top:1px}'
+    +'.cnt.has b{color:#c62828}'
+    +'.cnt b{font-size:11px;display:block;font-weight:800}'
+    +'.dt{font-size:9px;text-align:center;color:#999;padding-top:1px}'
+    +'.dt.has{color:#c62828;font-weight:600}'
+    +'.np{margin-top:20px;text-align:center}'
+    +'@media print{.np{display:none}.sec{page-break-inside:avoid}}'
+    +'</style></head><body><div class="wrap">'
+    +'<div class="title-bar"><h1>財務会計論（理論） 不正解問題一覧</h1>'
+    +'<div class="meta">'+ds+' ／ 不正解 '+totalBad+'問 ／ マスター '+countMastered()+'問</div></div>'
+    +body
+    +'</div></body></html>';
+  var w=window.open('','_blank');if(w){w.document.write(doc);w.document.close();w.focus();setTimeout(function(){w.print();},500);}
+  else alert('ポップアップを許可してください。');
 }
 
 </script>
