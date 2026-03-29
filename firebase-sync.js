@@ -1,18 +1,14 @@
-// Firebase Auto-Sync - 完全独立スクリプト
-// アプリ本体のコードには一切干渉しない
+// Firebase Auto-Sync v2 - 科目別ドキュメント対応
+// 各科目を users/{uid}/subjects/{FK} に保存（1MB上限回避）
 (function(){
   'use strict';
   try {
-    // FK はHTMLの data属性から取得
     var el = document.getElementById('firebase-sync-config');
     if (!el) return;
     var FK = el.getAttribute('data-key');
     if (!FK) return;
-
-    // Firebase SDK チェック
     if (typeof firebase === 'undefined') return;
 
-    // 初期化（重複防止）
     if (!firebase.apps.length) {
       firebase.initializeApp({
         apiKey: "AIzaSyByImWNSABE69MCpTHbqYZzz6LZRKwplD4",
@@ -25,7 +21,10 @@
     }
 
     var db = firebase.firestore();
-    var ref = db.collection('users').doc('u5wnfjuskrmm1bl4z0');
+    // v2: 科目別ドキュメント
+    var ref = db.collection('users').doc('u5wnfjuskrmm1bl4z0').collection('subjects').doc(FK);
+    // v1互換: 旧ドキュメント（マイグレーション用）
+    var oldRef = db.collection('users').doc('u5wnfjuskrmm1bl4z0');
 
     // 同期インジケーター
     var dot = document.createElement('div');
@@ -40,7 +39,6 @@
       hideTimer = setTimeout(function(){ dot.style.opacity = '0'; }, 3000);
     }
 
-    // ローカルデータのスナップショット取得
     function getLocalSnapshot() {
       return JSON.stringify({
         main: localStorage.getItem(FK) || '{}',
@@ -49,24 +47,26 @@
       });
     }
 
-    // Firestoreへアップロード
-    var lastSnapshot = getLocalSnapshot();
-    var uploading = false;
-    function upload() {
-      if (uploading) return;
-      var snap = getLocalSnapshot();
-      if (snap === lastSnapshot) return; // 変更なし
-      uploading = true;
-      lastSnapshot = snap;
-      showStatus('⬆ 保存中...', '#ffa726');
-      var payload = {};
-      payload[FK] = {
+    function buildPayload() {
+      return {
         main: JSON.parse(localStorage.getItem(FK) || '{}'),
         refcheck: JSON.parse(localStorage.getItem(FK + '_refcheck') || '{}'),
         highlight: JSON.parse(localStorage.getItem(FK + '_hl') || '{}'),
         _t: new Date().toISOString()
       };
-      ref.set(payload, { merge: true }).then(function(){
+    }
+
+    var lastSnapshot = getLocalSnapshot();
+    var uploading = false;
+
+    function upload(force) {
+      if (uploading) return;
+      var snap = getLocalSnapshot();
+      if (!force && snap === lastSnapshot) return;
+      uploading = true;
+      lastSnapshot = snap;
+      showStatus('⬆ 保存中...', '#ffa726');
+      ref.set(buildPayload()).then(function(){
         uploading = false;
         showStatus('✅ 同期完了', '#66bb6a');
       }).catch(function(){
@@ -75,41 +75,19 @@
       });
     }
 
-    // 定期的にlocalStorageの変更を検出してアップロード（3秒ごと）
-    setInterval(function(){
-      try { upload(); } catch(e){}
-    }, 3000);
+    setInterval(function(){ try { upload(); } catch(e){} }, 3000);
 
-    // ページ離脱時にもアップロード
     window.addEventListener('beforeunload', function(){
       try {
         var snap = getLocalSnapshot();
         if (snap !== lastSnapshot) {
-          var payload = {};
-          payload[FK] = {
-            main: JSON.parse(localStorage.getItem(FK) || '{}'),
-            refcheck: JSON.parse(localStorage.getItem(FK + '_refcheck') || '{}'),
-            highlight: JSON.parse(localStorage.getItem(FK + '_hl') || '{}'),
-            _t: new Date().toISOString()
-          };
-          // sendBeaconが使えない場合の同期書き込み
-          navigator.sendBeacon && navigator.sendBeacon('about:blank', '');
-          ref.set(payload, { merge: true });
+          ref.set(buildPayload());
         }
       } catch(e){}
     });
 
-    // ページロード時にFirestoreからダウンロード＆マージ
-    showStatus('⬇ 読込中...', '#42a5f5');
-    ref.get().then(function(doc){
-      if (!doc.exists || !doc.data()[FK]) {
-        showStatus('✅ ローカル使用', '#66bb6a');
-        upload();
-        return;
-      }
-      var r = doc.data()[FK];
-
-      // mainデータのマージ
+    // マージロジック
+    function mergeRemote(r) {
       if (r.main) {
         var l = JSON.parse(localStorage.getItem(FK) || '{}');
         var m = r.main;
@@ -163,49 +141,57 @@
         }
         localStorage.setItem(FK, JSON.stringify(l));
       }
-
-      // refcheckマージ
       if (r.refcheck) {
         var rc = JSON.parse(localStorage.getItem(FK+'_refcheck') || '{}');
         for (var k in r.refcheck) { if(!rc[k]) rc[k] = r.refcheck[k]; }
         localStorage.setItem(FK+'_refcheck', JSON.stringify(rc));
       }
-
-      // highlightマージ
       if (r.highlight) {
         var hl = JSON.parse(localStorage.getItem(FK+'_hl') || '{}');
         for (var k in r.highlight) { if(!hl[k]) hl[k] = r.highlight[k]; }
         localStorage.setItem(FK+'_hl', JSON.stringify(hl));
       }
+    }
 
-      // アプリ状態をリロード
+    function reloadApp() {
       if (typeof loadStorage === 'function') loadStorage();
       if (typeof refCheckDB !== 'undefined') {
         refCheckDB = JSON.parse(localStorage.getItem(FK+'_refcheck') || '{}');
       }
       if (typeof updateCountBadge === 'function') updateCountBadge();
+    }
 
-      // マージ後、ローカルの最新状態を必ずアップロード（携帯⇔PC間の不一致を解消）
-      showStatus('⬆ 保存中...', '#ffa726');
-      var payload = {};
-      payload[FK] = {
-        main: JSON.parse(localStorage.getItem(FK) || '{}'),
-        refcheck: JSON.parse(localStorage.getItem(FK + '_refcheck') || '{}'),
-        highlight: JSON.parse(localStorage.getItem(FK + '_hl') || '{}'),
-        _t: new Date().toISOString()
-      };
-      ref.set(payload, { merge: true }).then(function(){
-        lastSnapshot = getLocalSnapshot();
-        showStatus('✅ 同期完了', '#66bb6a');
+    // ページロード時にダウンロード＆マージ
+    showStatus('⬇ 読込中...', '#42a5f5');
+
+    // まずv2（科目別ドキュメント）を試す
+    ref.get().then(function(doc){
+      if (doc.exists) {
+        // v2データあり → マージしてアップロード
+        mergeRemote(doc.data());
+        reloadApp();
+        upload(true);
+        return;
+      }
+      // v2データなし → v1（旧ドキュメント）からマイグレーション
+      oldRef.get().then(function(oldDoc){
+        if (oldDoc.exists && oldDoc.data()[FK]) {
+          mergeRemote(oldDoc.data()[FK]);
+          reloadApp();
+          // v2に保存（マイグレーション完了）
+          upload(true);
+        } else {
+          // どこにもデータなし → ローカルをアップロード
+          showStatus('✅ ローカル使用', '#66bb6a');
+          upload(true);
+        }
       }).catch(function(){
-        lastSnapshot = getLocalSnapshot();
-        showStatus('⚠ 読込のみ', '#ffa726');
+        showStatus('⚠ v1読込失敗', '#ffa726');
+        upload(true);
       });
     }).catch(function(e){
       showStatus('❌ 読込エラー', '#ef5350');
     });
 
-  } catch(ex) {
-    // Firebase関連のエラーは完全に握りつぶす - アプリに影響させない
-  }
+  } catch(ex) {}
 })();
