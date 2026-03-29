@@ -164,29 +164,25 @@
     // ページロード時にダウンロード＆マージ
     showStatus('⬇ 読込中...', '#42a5f5');
 
-    // まずv2（科目別ドキュメント）を試す
+    // まずv2（科目別ドキュメント）を試す → なければv1から移行
     ref.get().then(function(doc){
-      if (doc.exists) {
-        // v2データあり → マージしてアップロード
+      if (doc.exists && doc.data().main) {
+        // v2にデータあり → マージしてアップロード
         mergeRemote(doc.data());
         reloadApp();
         upload(true);
         return;
       }
-      // v2データなし → v1（旧ドキュメント）からマイグレーション
+      // v2にデータなし → v1（旧ドキュメント）からマイグレーション
       oldRef.get().then(function(oldDoc){
         if (oldDoc.exists && oldDoc.data()[FK]) {
           mergeRemote(oldDoc.data()[FK]);
           reloadApp();
-          // v2に保存（マイグレーション完了）
-          upload(true);
-        } else {
-          // どこにもデータなし → ローカルをアップロード
-          showStatus('✅ ローカル使用', '#66bb6a');
-          upload(true);
         }
+        // v2に保存（マイグレーション or ローカルのみ）
+        upload(true);
       }).catch(function(){
-        showStatus('⚠ v1読込失敗', '#ffa726');
+        // v1読込失敗でもローカルデータをv2にアップロード
         upload(true);
       });
     }).catch(function(e){
