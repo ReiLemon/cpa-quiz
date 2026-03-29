@@ -185,8 +185,22 @@
       }
       if (typeof updateCountBadge === 'function') updateCountBadge();
 
-      lastSnapshot = getLocalSnapshot();
-      showStatus('✅ 同期完了', '#66bb6a');
+      // マージ後、ローカルの最新状態を必ずアップロード（携帯⇔PC間の不一致を解消）
+      showStatus('⬆ 保存中...', '#ffa726');
+      var payload = {};
+      payload[FK] = {
+        main: JSON.parse(localStorage.getItem(FK) || '{}'),
+        refcheck: JSON.parse(localStorage.getItem(FK + '_refcheck') || '{}'),
+        highlight: JSON.parse(localStorage.getItem(FK + '_hl') || '{}'),
+        _t: new Date().toISOString()
+      };
+      ref.set(payload, { merge: true }).then(function(){
+        lastSnapshot = getLocalSnapshot();
+        showStatus('✅ 同期完了', '#66bb6a');
+      }).catch(function(){
+        lastSnapshot = getLocalSnapshot();
+        showStatus('⚠ 読込のみ', '#ffa726');
+      });
     }).catch(function(e){
       showStatus('❌ 読込エラー', '#ef5350');
     });
