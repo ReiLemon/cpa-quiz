@@ -1,13 +1,13 @@
-// Firebase Auto-Sync v2 - 科目別ドキュメント対応
+// Firebase Auto-Sync v3 - 科目別ドキュメント対応 + キャッシュバスト
 // 各科目を users/{uid}/subjects/{FK} に保存（1MB上限回避）
 (function(){
   'use strict';
   try {
     var el = document.getElementById('firebase-sync-config');
-    if (!el) return;
+    if (!el) { console.warn('[sync] config element not found'); return; }
     var FK = el.getAttribute('data-key');
-    if (!FK) return;
-    if (typeof firebase === 'undefined') return;
+    if (!FK) { console.warn('[sync] data-key missing'); return; }
+    if (typeof firebase === 'undefined') { console.warn('[sync] firebase not loaded'); return; }
 
     if (!firebase.apps.length) {
       firebase.initializeApp({
@@ -36,7 +36,7 @@
       dot.style.color = color || '#aaa';
       dot.style.opacity = '1';
       clearTimeout(hideTimer);
-      hideTimer = setTimeout(function(){ dot.style.opacity = '0'; }, 3000);
+      hideTimer = setTimeout(function(){ dot.style.opacity = '0'; }, 4000);
     }
 
     function getLocalSnapshot() {
@@ -52,7 +52,8 @@
         main: JSON.parse(localStorage.getItem(FK) || '{}'),
         refcheck: JSON.parse(localStorage.getItem(FK + '_refcheck') || '{}'),
         highlight: JSON.parse(localStorage.getItem(FK + '_hl') || '{}'),
-        _t: new Date().toISOString()
+        _t: new Date().toISOString(),
+        _v: 3
       };
     }
 
@@ -66,16 +67,20 @@
       uploading = true;
       lastSnapshot = snap;
       showStatus('⬆ 保存中...', '#ffa726');
-      ref.set(buildPayload()).then(function(){
+      var payload = buildPayload();
+      console.log('[sync] uploading to', FK, 'size:', JSON.stringify(payload).length);
+      ref.set(payload).then(function(){
         uploading = false;
         showStatus('✅ 同期完了', '#66bb6a');
-      }).catch(function(){
+        console.log('[sync] upload success');
+      }).catch(function(e){
         uploading = false;
-        showStatus('❌ 同期エラー', '#ef5350');
+        showStatus('❌ 保存エラー: ' + (e.message||e), '#ef5350');
+        console.error('[sync] upload error:', e);
       });
     }
 
-    setInterval(function(){ try { upload(); } catch(e){} }, 3000);
+    setInterval(function(){ try { upload(); } catch(e){ console.error('[sync] interval error:', e); } }, 3000);
 
     window.addEventListener('beforeunload', function(){
       try {
@@ -162,10 +167,12 @@
     }
 
     // ページロード時にダウンロード＆マージ
-    showStatus('⬇ 読込中...', '#42a5f5');
+    showStatus('⬇ v3読込中...', '#42a5f5');
+    console.log('[sync] v3 starting for', FK);
 
     // まずv2（科目別ドキュメント）を試す → なければv1から移行
     ref.get().then(function(doc){
+      console.log('[sync] v2 doc exists:', doc.exists, doc.exists ? 'has main:' + !!doc.data().main : '');
       if (doc.exists && doc.data().main) {
         // v2にデータあり → マージしてアップロード
         mergeRemote(doc.data());
@@ -174,20 +181,24 @@
         return;
       }
       // v2にデータなし → v1（旧ドキュメント）からマイグレーション
+      console.log('[sync] trying v1 migration...');
       oldRef.get().then(function(oldDoc){
+        console.log('[sync] v1 doc exists:', oldDoc.exists, oldDoc.exists ? 'has FK:' + !!(oldDoc.data()||{})[FK] : '');
         if (oldDoc.exists && oldDoc.data()[FK]) {
           mergeRemote(oldDoc.data()[FK]);
           reloadApp();
         }
         // v2に保存（マイグレーション or ローカルのみ）
         upload(true);
-      }).catch(function(){
+      }).catch(function(e){
+        console.error('[sync] v1 read error:', e);
         // v1読込失敗でもローカルデータをv2にアップロード
         upload(true);
       });
     }).catch(function(e){
-      showStatus('❌ 読込エラー', '#ef5350');
+      showStatus('❌ 読込エラー: ' + (e.code||e.message||e), '#ef5350');
+      console.error('[sync] v2 read error:', e);
     });
 
-  } catch(ex) {}
+  } catch(ex) { console.error('[sync] init error:', ex); }
 })();
