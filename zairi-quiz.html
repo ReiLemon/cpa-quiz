@@ -223,7 +223,6 @@ mark.hl.hl-blue{background:#90caf9}
       <div class="fgrp">
         <button class="fb lA on" id="fl-A" onclick="toggleLevel('A')">A論点</button>
         <button class="fb lB on" id="fl-B" onclick="toggleLevel('B')">B論点</button>
-        <button class="fb lC"    id="fl-C" onclick="toggleLevel('C')">C論点</button>
       </div>
     </div>
     <div class="filter-row">
@@ -447,7 +446,7 @@ var SEC_CONCEPTS = {"第１節 財務会計総論": "▶ 第１節 財務会計�
 var SRS_DAYS = [0, 1, 3, 7, 14, 30];
 
 // ===== STATE =====
-var activeLevels = {A:true,B:true,C:false};
+var activeLevels = {A:true,B:true};
 var activeChapter = 'all';
 var activeMode = 'all';
 var quizOrder='random'; // 'random' or 'seq'
@@ -592,12 +591,56 @@ function countMastered(){
 }
 
 function updateCountBadge(){
-  var n=getFiltered().length;
-  gi('q-count-badge').textContent=n+'問中 30問出題';
+  var pool=getFiltered();
+  var n=pool.length;
+  var unans=0;
+  for(var i=0;i<pool.length;i++) if(!answeredDB[pool[i].id]) unans++;
+  // AB問題のみの進行率
+  var abAll=QUESTIONS.filter(function(q){return q.level==='A'||q.level==='B';});
+  var abDone=0;
+  for(var i=0;i<abAll.length;i++) if(answeredDB[abAll[i].id]) abDone++;
+  var pct=abAll.length>0?Math.round(abDone/abAll.length*100):0;
+  if(unans>0){
+    gi('q-count-badge').textContent='残り'+unans+'問 / '+n+'問（AB進行: '+pct+'%）';
+  } else {
+    gi('q-count-badge').textContent=n+'問中 30問出題（AB進行: '+pct+'%）';
+  }
   var due=countSrsDue();
   var dueBdg=gi('due-badge');
   if(due>0){dueBdg.textContent='今日の復習 '+due+'問';dueBdg.style.display='inline-block';}
   else dueBdg.style.display='none';
+  // 章ボタンに未解答マーク
+  updateChapterBadges();
+}
+function updateChapterBadges(){
+  var btns=gi('ch-fgrp').querySelectorAll('.fb');
+  for(var i=0;i<btns.length;i++){
+    var btn=btns[i];
+    var oc=btn.getAttribute('onclick')||'';
+    var m=oc.match(/setChapter\('([^']+)'/);
+    if(!m) continue;
+    var ch=m[1];
+    if(ch==='all') continue;
+    var chQs=QUESTIONS.filter(function(q){return q.chapter===ch&&(q.level==='A'||q.level==='B');});
+    var chUnans=0;
+    for(var j=0;j<chQs.length;j++) if(!answeredDB[chQs[j].id]) chUnans++;
+    // 既存のバッジを除去
+    var old=btn.querySelector('.ch-unans');
+    if(old) old.remove();
+    if(chUnans>0){
+      var sp=document.createElement('span');
+      sp.className='ch-unans';
+      sp.style.cssText='display:inline-block;background:#ff5722;color:#fff;font-size:9px;font-weight:700;border-radius:50%;min-width:16px;height:16px;line-height:16px;text-align:center;margin-left:3px;padding:0 3px;';
+      sp.textContent=chUnans;
+      btn.appendChild(sp);
+    } else {
+      var sp=document.createElement('span');
+      sp.className='ch-unans';
+      sp.style.cssText='display:inline-block;color:#4caf50;font-size:10px;margin-left:2px;';
+      sp.textContent='✓';
+      btn.appendChild(sp);
+    }
+  }
 }
 
 // ===== QUIZ =====
