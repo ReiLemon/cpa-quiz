@@ -453,6 +453,34 @@ function saveStorage(){
   }catch(e){}
 }
 loadStorage();
+
+// === 一回限りリセット: 第1章・第2章以外のデータを消去 ===
+(function(){
+  if(localStorage.getItem('kigyou_v6_reset_ch3plus_done')) return;
+  // 第1章・第2章の問題IDを収集
+  var keepIDs = {};
+  QUESTIONS.forEach(function(q){
+    if(q.chapter && (q.chapter.indexOf('第1章')===0 || q.chapter.indexOf('第2章')===0)){
+      keepIDs[q.id] = true;
+    }
+  });
+  // 各DBからch3+のキーを削除
+  [db, wrongDB, unknownDB, bookmarks, srsDB, memoMap, slow20DB, answeredDB].forEach(function(obj){
+    Object.keys(obj).forEach(function(k){
+      if(!keepIDs[k] && !keepIDs[parseInt(k)]) delete obj[k];
+    });
+  });
+  // slowDB(配列)もフィルター
+  if(Array.isArray(slowDB)){
+    slowDB = slowDB.filter(function(id){ return keepIDs[id] || keepIDs[parseInt(id)]; });
+  }
+  // sessHistoryはそのまま残す
+  saveStorage();
+  localStorage.setItem('kigyou_v6_reset_ch3plus_done','1');
+  console.log('[reset] 第3章以降のデータをリセットしました。保持ID数:', Object.keys(keepIDs).length);
+})();
+// === リセット完了 ===
+
 var refCheckDB=JSON.parse(localStorage.getItem('kigyou_v6_refcheck')||'{}');
 updateCountBadge();
 
