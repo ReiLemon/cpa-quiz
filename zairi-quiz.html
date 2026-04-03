@@ -591,19 +591,24 @@ function countMastered(){
 }
 
 function updateCountBadge(){
-  var pool=getFiltered();
-  var n=pool.length;
-  var unans=0;
-  for(var i=0;i<pool.length;i++) if(!answeredDB[pool[i].id]) unans++;
-  // AB問題のみの進行率
-  var abAll=QUESTIONS.filter(function(q){return q.level==='A'||q.level==='B';});
-  var abDone=0;
-  for(var i=0;i<abAll.length;i++) if(answeredDB[abAll[i].id]) abDone++;
-  var pct=abAll.length>0?Math.round(abDone/abAll.length*100):0;
-  if(unans>0){
-    gi('q-count-badge').textContent='残り'+unans+'問 / '+n+'問（AB進行: '+pct+'%）';
+  // AB問題のみで進行率を計算（選択中の章に連動）
+  var abPool=QUESTIONS.filter(function(q){
+    if(q.level!=='A'&&q.level!=='B') return false;
+    if(activeChapter!=='all'&&q.chapter!==activeChapter) return false;
+    return true;
+  });
+  var abTotal=abPool.length;
+  var abDone=0, abUnans=0;
+  for(var i=0;i<abPool.length;i++){
+    if(answeredDB[abPool[i].id]) abDone++;
+    else abUnans++;
+  }
+  var pct=abTotal>0?Math.round(abDone/abTotal*100):0;
+  var label=activeChapter==='all'?'全章':'選択章';
+  if(abUnans>0){
+    gi('q-count-badge').textContent='AB '+abDone+'/'+abTotal+'問（'+pct+'%）残り'+abUnans+'問';
   } else {
-    gi('q-count-badge').textContent=n+'問中 30問出題（AB進行: '+pct+'%）';
+    gi('q-count-badge').textContent='AB '+abTotal+'問 完了（'+pct+'%）復習モード';
   }
   var due=countSrsDue();
   var dueBdg=gi('due-badge');
