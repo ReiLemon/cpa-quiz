@@ -17753,7 +17753,7 @@ loadStorage();
   localStorage.setItem('kigyou_v6_reset_ch3plus_done','1');
   console.log('[reset] 第3章以降のデータをリセットしました。保持ID数:', Object.keys(keepIDs).length);
 })();
-// === v7リセット: 解答修正93問+番号修正に伴い第1・2章以外を再リセット ===
+// === v7リセット: 解答修正93問+番号修正に伴い第1・2章以外の着手をリセット ===
 (function(){
   if(localStorage.getItem('kigyou_v7_reset_ch3plus_done')) return;
   var keepIDs = {};
@@ -17762,7 +17762,8 @@ loadStorage();
       keepIDs[q.id] = true;
     }
   });
-  [db, wrongDB, unknownDB, bookmarks, srsDB, memoMap, slow20DB, answeredDB].forEach(function(obj){
+  // answeredDB, db, srsDB等はリセットするが、wrongDB/unknownDBは保持
+  [db, bookmarks, srsDB, memoMap, slow20DB, answeredDB].forEach(function(obj){
     Object.keys(obj).forEach(function(k){
       if(!keepIDs[k] && !keepIDs[parseInt(k)]) delete obj[k];
     });
@@ -17772,7 +17773,41 @@ loadStorage();
   }
   saveStorage();
   localStorage.setItem('kigyou_v7_reset_ch3plus_done','1');
-  console.log('[reset v7] 第3章以降のデータをリセットしました（解答93問修正対応）');
+  console.log('[reset v7] 第3章以降の着手データをリセット（不正解記録は保持）');
+})();
+// === v7b: wrongDB/unknownDBがリセットで消えた場合sessHistoryから復元 ===
+(function(){
+  if(localStorage.getItem('kigyou_v7b_restore_wrong_done')) return;
+  // sessHistoryからwrongDB/unknownDBを再構築（ch3+用）
+  var keepIDs = {};
+  QUESTIONS.forEach(function(q){
+    if(q.chapter && (q.chapter.indexOf('第1章')===0 || q.chapter.indexOf('第2章')===0)){
+      keepIDs[q.id] = true;
+    }
+  });
+  var restored=0;
+  sessHistory.forEach(function(s){
+    if(!s.items) return;
+    s.items.forEach(function(it){
+      if(keepIDs[it.id]) return; // ch1/2はそのまま
+      if(!QIDS.has(it.id)) return;
+      var itRes=it.res||(it.unknown?'uk':(!it.ok?'ng':null));
+      if(itRes==='ng'){
+        if(!wrongDB[it.id]) wrongDB[it.id]=0;
+        wrongDB[it.id]++;
+        restored++;
+      } else if(itRes==='uk'){
+        if(!unknownDB[it.id]) unknownDB[it.id]=0;
+        unknownDB[it.id]++;
+        restored++;
+      }
+    });
+  });
+  if(restored>0){
+    saveStorage();
+    console.log('[v7b] sessHistoryからwrongDB/unknownDBを復元:', restored, '件');
+  }
+  localStorage.setItem('kigyou_v7b_restore_wrong_done','1');
 })();
 // === リセット完了 ===
 
