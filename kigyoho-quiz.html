@@ -17669,12 +17669,14 @@ var QNUM={};
 (function(){
   var secCounts={};
   QUESTIONS.forEach(function(q){
+    var ch=q.chapter||'';
     var sec=q.section||'';
     var m=sec.match(/^(\d+)/);
     var sn=m?m[1]:'0';
-    if(!secCounts[sn]) secCounts[sn]=0;
-    secCounts[sn]++;
-    QNUM[q.id]=sn+'-'+secCounts[sn];
+    var key=ch+':'+sn;
+    if(!secCounts[key]) secCounts[key]=0;
+    secCounts[key]++;
+    QNUM[q.id]=sn+'-'+secCounts[key];
   });
 })();
 var QIDS=new Set(QUESTIONS.map(function(q){return q.id;}));
@@ -17750,6 +17752,27 @@ loadStorage();
   saveStorage();
   localStorage.setItem('kigyou_v6_reset_ch3plus_done','1');
   console.log('[reset] 第3章以降のデータをリセットしました。保持ID数:', Object.keys(keepIDs).length);
+})();
+// === v7リセット: 解答修正93問+番号修正に伴い第1・2章以外を再リセット ===
+(function(){
+  if(localStorage.getItem('kigyou_v7_reset_ch3plus_done')) return;
+  var keepIDs = {};
+  QUESTIONS.forEach(function(q){
+    if(q.chapter && (q.chapter.indexOf('第1章')===0 || q.chapter.indexOf('第2章')===0)){
+      keepIDs[q.id] = true;
+    }
+  });
+  [db, wrongDB, unknownDB, bookmarks, srsDB, memoMap, slow20DB, answeredDB].forEach(function(obj){
+    Object.keys(obj).forEach(function(k){
+      if(!keepIDs[k] && !keepIDs[parseInt(k)]) delete obj[k];
+    });
+  });
+  if(Array.isArray(slowDB)){
+    slowDB = slowDB.filter(function(id){ return keepIDs[id] || keepIDs[parseInt(id)]; });
+  }
+  saveStorage();
+  localStorage.setItem('kigyou_v7_reset_ch3plus_done','1');
+  console.log('[reset v7] 第3章以降のデータをリセットしました（解答93問修正対応）');
 })();
 // === リセット完了 ===
 
