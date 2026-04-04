@@ -17665,7 +17665,8 @@ var QUESTIONS    = [
 "explanation": "172条以下参照。\n自己株券買付状況報告書の不提出は，刑事罰の対象となっているが（200条５号，207条１項５号）課徴金の対象と\nはなっていない。\n⑬-56"
 }
 ];
-var QNUM={};
+var QNUM={};   // id → 節内連番(number)
+var QSEC={};   // id → 節番号(string)
 (function(){
   // 全角数字→半角変換
   function zen2han(s){return s.replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0);});}
@@ -17678,7 +17679,8 @@ var QNUM={};
     var key=ch+':'+sn;
     if(!secCounts[key]) secCounts[key]=0;
     secCounts[key]++;
-    QNUM[q.id]=sn+'-'+secCounts[key];
+    QSEC[q.id]=sn;
+    QNUM[q.id]=secCounts[key];
   });
 })();
 var QIDS=new Set(QUESTIONS.map(function(q){return q.id;}));
@@ -18793,8 +18795,7 @@ function genMyTextbook(){
   var chapters={};var chOrder=[];
   badQs.forEach(function(q){
     var ch=q.chapter;
-    var qn=QNUM[q.id]||'';
-    var secNum=qn?qn.split('-')[0]:'0';
+    var secNum=QSEC[q.id]||'0';
     if(!chapters[ch]){chapters[ch]={sections:{},secOrder:[]};chOrder.push(ch);}
     var cObj=chapters[ch];
     if(!cObj.sections[secNum]){cObj.sections[secNum]=[];cObj.secOrder.push(secNum);}
@@ -18828,9 +18829,7 @@ function genMyTextbook(){
     sortedSecs.forEach(function(secNum){
       var qs=cObj.sections[secNum];
       qs.sort(function(a,b){
-        var qa=QNUM[a.id]||'';var qb=QNUM[b.id]||'';
-        var na=parseInt((qa.split('-')[1])||'0');var nb=parseInt((qb.split('-')[1])||'0');
-        return na-nb;
+        return (QNUM[a.id]||0)-(QNUM[b.id]||0);
       });
       var secKey=secNameMap[chNum+':'+secNum]||'';
       var secTitle=secKey?secKey.replace(/^\d+\./,''):'第'+secNum+'節';
@@ -18920,8 +18919,7 @@ function downloadBookmarkPDF(){
   var chapters={};var chOrder=[];
   bookmarkQs.forEach(function(q){
     var ch=q.chapter;
-    var qn=QNUM[q.id]||'';
-    var secNum=qn?qn.split('-')[0]:'0';
+    var secNum=QSEC[q.id]||'0';
     if(!chapters[ch]){chapters[ch]={sections:{},secOrder:[]};chOrder.push(ch);}
     var cObj=chapters[ch];
     if(!cObj.sections[secNum]){cObj.sections[secNum]=[];cObj.secOrder.push(secNum);}
@@ -18956,9 +18954,7 @@ function downloadBookmarkPDF(){
     sortedSecs.forEach(function(secNum){
       var qs=cObj.sections[secNum];
       qs.sort(function(a,b){
-        var qa=QNUM[a.id]||'';var qb=QNUM[b.id]||'';
-        var na=parseInt((qa.split('-')[1])||'0');var nb=parseInt((qb.split('-')[1])||'0');
-        return na-nb;
+        return (QNUM[a.id]||0)-(QNUM[b.id]||0);
       });
       var secKey=secNameMap[chNum+':'+secNum]||'';
       var secTitle=secKey?secKey.replace(/^\d+\./,''):'第'+secNum+'節';
