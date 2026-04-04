@@ -15557,6 +15557,7 @@ function renderTextRef(){
 function renderProg(){
   var chTotal={}, chDone={};
   QUESTIONS.forEach(function(q){
+    if(q.level!=='A'&&q.level!=='B') return;
     if(!chTotal[q.chapter]) chTotal[q.chapter]=0;
     chTotal[q.chapter]++;
     if(answeredDB[q.id]){
@@ -15564,18 +15565,18 @@ function renderProg(){
       chDone[q.chapter]++;
     }
   });
-  var totalAll=QUESTIONS.length;
-  var doneAll=Object.keys(answeredDB).length;
+  var totalAll=0, doneAll=0;
+  for(var k in chTotal){ totalAll+=chTotal[k]; doneAll+=(chDone[k]||0); }
   var pctAll=totalAll>0?Math.round(doneAll/totalAll*100):0;
 
   var html='<div style="background:#fff;border:1px solid #dde3f0;border-radius:8px;padding:16px 18px;margin-bottom:14px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
-    +'<span style="font-size:15px;font-weight:700;color:#1c3a6e">着手状況</span>'
+    +'<span style="font-size:15px;font-weight:700;color:#1c3a6e">着手状況（AB論点のみ）</span>'
     +'<span style="font-size:11px;color:#6b82aa">1回以上解いた問題</span>'
     +'</div>'
     +'<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #e8edf5">'
     +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">'
-    +'<span style="font-size:13px;font-weight:700;color:#222">全体</span>'
+    +'<span style="font-size:13px;font-weight:700;color:#222">全体（AB）</span>'
     +'<span style="font-size:12px;font-weight:700;color:#1565c0">'+pctAll+'%'
     +'<span style="font-size:11px;color:#888;font-weight:400"> ('+doneAll+'/'+totalAll+')</span></span>'
     +'</div>'
@@ -15584,7 +15585,7 @@ function renderProg(){
     +'</div></div>';
 
   var chapOrder=[];
-  QUESTIONS.forEach(function(q){ if(chapOrder.indexOf(q.chapter)<0) chapOrder.push(q.chapter); });
+  QUESTIONS.forEach(function(q){ if((q.level==='A'||q.level==='B')&&chapOrder.indexOf(q.chapter)<0) chapOrder.push(q.chapter); });
   chapOrder.forEach(function(ch){
     var tot=chTotal[ch]||0;
     var done=chDone[ch]||0;
