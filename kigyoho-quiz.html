@@ -17667,10 +17667,12 @@ var QUESTIONS    = [
 ];
 var QNUM={};
 (function(){
+  // 全角数字→半角変換
+  function zen2han(s){return s.replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0);});}
   var secCounts={};
   QUESTIONS.forEach(function(q){
     var ch=q.chapter||'';
-    var sec=q.section||'';
+    var sec=zen2han(q.section||'');
     var m=sec.match(/^(\d+)/);
     var sn=m?m[1]:'0';
     var key=ch+':'+sn;
