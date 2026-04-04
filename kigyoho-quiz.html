@@ -381,7 +381,6 @@ mark.hl.hl-blue{background:#90caf9}
   <div id="text-empty" class="center-msg" style="display:none">
     <div style="font-size:40px;margin-bottom:12px">📚</div>
     <p>まだ間違えた問題がありません。<br>クイズを解くと間違えた問題のテキスト解説が表示されます。</p>
-    <div id="text-debug" style="font-size:10px;color:#999;margin-top:12px"></div>
   </div>
   <div id="text-body"></div>
 </div>
@@ -17692,7 +17691,7 @@ var sessItems=[];
 var qStart=0, timerInt=null;
 var activeSessionIdx=0;
 
-var db={}, wrongDB={}, unknownDB={}, slowDB=[], bookmarks={}, sessHistory=[];
+var db={}, wrongDB={}, unknownDB={}, slowDB=[], bookmarks={}, sessHistory=[], qWrongHist={};
 var SRS_DAYS = [0, 1, 3, 7, 14, 30];
 var srsDB={}, memoMap={}, slow20DB={}, answeredDB={};
 var PAGES={};
@@ -18448,8 +18447,6 @@ function renderTextRef(){
   var allBadIds=collectAllBadIds();
   if(allBadIds.length===0){
     show('text-empty');hide('text-body');
-    var dbg=gi('text-debug');
-    if(dbg) dbg.textContent='[debug] wrongDB:'+Object.keys(wrongDB).length+' unknownDB:'+Object.keys(unknownDB).length+' sessHistory:'+sessHistory.length+' sessions_with_items:'+sessHistory.filter(function(s){return s.items&&s.items.length>0;}).length;
     return;
   }
   hide('text-empty');show('text-body');
@@ -18461,7 +18458,7 @@ function renderTextRef(){
   }
 
   // Build wrong/unknown history per question from sessHistory
-  var qWrongHist={};
+  qWrongHist={};
   sessHistory.forEach(function(sess){
     if(!sess.items) return;
     sess.items.forEach(function(it){
@@ -19037,7 +19034,7 @@ function showTab(name){
   gi('screen-'+name).classList.add('active');
   gi('tab-'+name).classList.add('active');
   if(name==='an') renderAn();
-  if(name==='text'){ try{ renderTextRef(); }catch(e){ console.error('renderTextRef error:',e); gi('text-body').innerHTML='<div style="color:red;padding:20px">表示エラー: '+e.message+'<br><br>wrongDB: '+Object.keys(wrongDB).length+' keys<br>unknownDB: '+Object.keys(unknownDB).length+' keys<br>sessHistory: '+sessHistory.length+' entries</div>'; } }
+  if(name==='text') renderTextRef();
   if(name==='prog') renderProg();
 }
 function gi(id){return document.getElementById(id);}
