@@ -18081,12 +18081,13 @@ function answerQ(choice){
   if(ok) db[key].ok++;
   if(!ok&&!unknown){
     wrongDB[q.id]=(wrongDB[q.id]||0)+1;
+    _badIdsCache=null;
     if(refCheckDB[q.id]){
       delete refCheckDB[q.id];
       localStorage.setItem('kigyou_v6_refcheck',JSON.stringify(refCheckDB));
     }
   }
-  if(unknown) unknownDB[q.id]=(unknownDB[q.id]||0)+1;
+  if(unknown){ unknownDB[q.id]=(unknownDB[q.id]||0)+1; _badIdsCache=null; }
 
   // slow tracker
   if(elapsed>=20){
@@ -18443,11 +18444,7 @@ function getLastWrongTs(qid){
 }
 
 function renderTextRef(){
-  var wrongIds=Object.keys(wrongDB).map(Number);
-  var unknownIds=Object.keys(unknownDB).map(Number);
-  var allBadIds=[];
-  wrongIds.forEach(function(id){if(allBadIds.indexOf(id)<0)allBadIds.push(id);});
-  unknownIds.forEach(function(id){if(allBadIds.indexOf(id)<0)allBadIds.push(id);});
+  var allBadIds=collectAllBadIds();
   if(allBadIds.length===0){show('text-empty');hide('text-body');return;}
   hide('text-empty');show('text-body');
 
@@ -18457,12 +18454,11 @@ function renderTextRef(){
     return (d.getMonth()+1)+'月'+d.getDate()+'日 '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
   }
 
-  // Build wrong/unknown history per question from sessHistory (sorted by time)
+  // Build wrong/unknown history per question from sessHistory
   var qWrongHist={};
   sessHistory.forEach(function(sess){
     if(!sess.items) return;
     sess.items.forEach(function(it){
-      // sessItems uses ok/unknown booleans; support both old (res) and new format
       var itRes=it.res||(it.unknown?'uk':(!it.ok?'ng':null));
       if(itRes==='ng'||itRes==='uk'){
         if(!qWrongHist[it.id]) qWrongHist[it.id]=[];
@@ -18667,6 +18663,42 @@ function renderProg(){
 }
 
 
+// ===== 不正解ID収集（wrongDB + unknownDB + sessHistory） =====
+var _badIdsCache=null;
+function collectAllBadIds(){
+  if(_badIdsCache) return _badIdsCache;
+  var badSet={};
+  Object.keys(wrongDB).forEach(function(k){if(QIDS.has(Number(k)))badSet[Number(k)]=true;});
+  Object.keys(unknownDB).forEach(function(k){if(QIDS.has(Number(k)))badSet[Number(k)]=true;});
+  // sessHistoryから不正解IDも追加し、wrongDB/unknownDBが空なら復元
+  var needRestore={};
+  sessHistory.forEach(function(sess){
+    if(!sess.items) return;
+    sess.items.forEach(function(it){
+      if(!QIDS.has(it.id)) return;
+      var itRes=it.res||(it.unknown?'uk':(!it.ok?'ng':null));
+      if(itRes==='ng'||itRes==='uk'){
+        badSet[it.id]=true;
+        if(!wrongDB[it.id]&&!unknownDB[it.id]){
+          if(!needRestore[it.id]) needRestore[it.id]={w:0,u:0};
+          if(itRes==='ng') needRestore[it.id].w++;
+          else needRestore[it.id].u++;
+        }
+      }
+    });
+  });
+  // wrongDB/unknownDBが消えたIDだけ復元
+  var restored=0;
+  Object.keys(needRestore).forEach(function(id){
+    var r=needRestore[id];
+    if(r.w>0){wrongDB[id]=r.w;restored++;}
+    if(r.u>0){unknownDB[id]=r.u;restored++;}
+  });
+  if(restored>0) saveStorage();
+  _badIdsCache=Object.keys(badSet).map(Number);
+  return _badIdsCache;
+}
+
 // ===== PDF: 強化レポート =====
 function genPDF(){
   var keys=Object.keys(db);
@@ -18736,13 +18768,10 @@ function genPDF(){
 
 // ===== PDF: 不正解問題一覧（章→節→問題番号レイアウト） =====
 function genMyTextbook(){
-  var wrongIds=Object.keys(wrongDB).map(Number);
-  var unknownIds=Object.keys(unknownDB).map(Number);
-  var badSet={};
-  wrongIds.forEach(function(id){badSet[id]=true;});
-  unknownIds.forEach(function(id){badSet[id]=true;});
-  var allBadIds=Object.keys(badSet).map(Number);
+  var allBadIds=collectAllBadIds();
   if(allBadIds.length===0){alert('まだ間違えた問題がありません。クイズを解いてから生成してください。');return;}
+  var badSet={};
+  allBadIds.forEach(function(id){badSet[id]=true;});
 
   var secNameMap={};
   Object.keys(PAGES).forEach(function(key){
