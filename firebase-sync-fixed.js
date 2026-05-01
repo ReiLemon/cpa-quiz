@@ -1,6 +1,6 @@
 // Firebase Auto-Sync - 完全独立スクリプト
 // アプリ本体のコードには一切干渉しない
-// v2: サブコレクション分割でFirestore 1MBドキュメント制限を回避
+// v2: データ圧縮でFirestore 1MBドキュメント制限を回避
 (function(){
   'use strict';
   try {
@@ -27,7 +27,6 @@
 
     var db = firebase.firestore();
     var userRef = db.collection('users').doc('u5wnfjuskrmm1bl4z0');
-    // サブコレクション: users/{uid}/subjects/{FK}
     var subRef = userRef.collection('subjects').doc(FK);
 
     // 同期インジケーター
@@ -43,19 +42,54 @@
       hideTimer = setTimeout(function(){ dot.style.opacity = '0'; }, 3000);
     }
 
-    // sessHistoryを直近50件に制限（データ肥大化防止）
-    function trimData(data) {
-      if (data.sessHistory && Array.isArray(data.sessHistory)) {
-        data.sessHistory.sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
-        if (data.sessHistory.length > 50) {
-          data.sessHistory = data.sessHistory.slice(0, 50);
+    // アップロード前にデータを圧縮（Firestore 1MB制限対策）
+    function trimForUpload(data) {
+      var d = JSON.parse(JSON.stringify(data)); // deep copy
+
+      // sessHistory: 直近30件に制限（各セッション内のitemsも圧縮）
+      if (d.sessHistory && Array.isArray(d.sessHistory)) {
+        d.sessHistory.sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+        d.sessHistory = d.sessHistory.slice(0, 30);
+        // 各セッションのitems配列を圧縮（id と result のみ保持）
+        d.sessHistory.forEach(function(s){
+          if (s.items && Array.isArray(s.items)) {
+            s.items = s.items.map(function(it){
+              return { id: it.id, r: it.r || (it.result === 'ok' ? 1 : it.result === 'ng' ? 0 : 2) };
+            });
+          }
+        });
+      }
+
+      // slowDB: 直近50件に制限
+      if (d.slowDB && Array.isArray(d.slowDB) && d.slowDB.length > 50) {
+        d.slowDB = d.slowDB.slice(-50);
+      }
+
+      // slow20DB: 直近50件に制限
+      if (d.slow20DB && typeof d.slow20DB === 'object') {
+        var keys = Object.keys(d.slow20DB);
+        if (keys.length > 50) {
+          var sorted = keys.sort(function(a,b){ return (d.slow20DB[b]||0)-(d.slow20DB[a]||0); });
+          var keep = {};
+          sorted.slice(0, 50).forEach(function(k){ keep[k] = d.slow20DB[k]; });
+          d.slow20DB = keep;
         }
       }
-      // slowDBも上限100に制限
-      if (data.slowDB && Array.isArray(data.slowDB) && data.slowDB.length > 100) {
-        data.slowDB = data.slowDB.slice(-100);
+
+      // answeredDB: タイムスタンプだけなので圧縮不要だが念のため
+      // wrongDB/unknownDB: 古いエントリを削除（マスター済みなら不要）
+      if (d.srsDB && d.wrongDB) {
+        Object.keys(d.wrongDB).forEach(function(k){
+          if (d.srsDB[k] && d.srsDB[k].lv >= 3) delete d.wrongDB[k];
+        });
       }
-      return data;
+      if (d.srsDB && d.unknownDB) {
+        Object.keys(d.unknownDB).forEach(function(k){
+          if (d.srsDB[k] && d.srsDB[k].lv >= 3) delete d.unknownDB[k];
+        });
+      }
+
+      return d;
     }
 
     // ローカルデータのスナップショット取得
@@ -67,7 +101,7 @@
       });
     }
 
-    // Firestoreへアップロード（サブコレクションに保存）
+    // Firestoreへアップロード
     var lastSnapshot = getLocalSnapshot();
     var uploading = false;
     function upload() {
@@ -78,7 +112,7 @@
       lastSnapshot = snap;
       showStatus('⬆ 保存中...', '#ffa726');
 
-      var mainData = trimData(JSON.parse(localStorage.getItem(FK) || '{}'));
+      var mainData = trimForUpload(JSON.parse(localStorage.getItem(FK) || '{}'));
       var payload = {
         main: mainData,
         refcheck: JSON.parse(localStorage.getItem(FK + '_refcheck') || '{}'),
@@ -105,7 +139,7 @@
       try {
         var snap = getLocalSnapshot();
         if (snap !== lastSnapshot) {
-          var mainData = trimData(JSON.parse(localStorage.getItem(FK) || '{}'));
+          var mainData = trimForUpload(JSON.parse(localStorage.getItem(FK) || '{}'));
           var payload = {
             main: mainData,
             refcheck: JSON.parse(localStorage.getItem(FK + '_refcheck') || '{}'),
@@ -119,11 +153,9 @@
     });
 
     // ページロード時にFirestoreからダウンロード＆マージ
-    // まずサブコレクションを試し、なければ旧形式（親ドキュメント）からマイグレーション
     showStatus('⬇ 読込中...', '#42a5f5');
 
     function applyRemoteData(r) {
-      // mainデータのマージ
       if (r.main) {
         var l = JSON.parse(localStorage.getItem(FK) || '{}');
         var m = r.main;
@@ -177,22 +209,17 @@
         }
         localStorage.setItem(FK, JSON.stringify(l));
       }
-
-      // refcheckマージ
       if (r.refcheck) {
         var rc = JSON.parse(localStorage.getItem(FK+'_refcheck') || '{}');
         for (var k in r.refcheck) { if(!rc[k]) rc[k] = r.refcheck[k]; }
         localStorage.setItem(FK+'_refcheck', JSON.stringify(rc));
       }
-
-      // highlightマージ
       if (r.highlight) {
         var hl = JSON.parse(localStorage.getItem(FK+'_hl') || '{}');
         for (var k in r.highlight) { if(!hl[k]) hl[k] = r.highlight[k]; }
         localStorage.setItem(FK+'_hl', JSON.stringify(hl));
       }
 
-      // アプリ状態をリロード
       if (typeof loadStorage === 'function') loadStorage();
       if (typeof refCheckDB !== 'undefined') {
         refCheckDB = JSON.parse(localStorage.getItem(FK+'_refcheck') || '{}');
@@ -203,44 +230,24 @@
       showStatus('✅ 同期完了', '#66bb6a');
     }
 
-    // まずサブコレクションから読む
     subRef.get().then(function(doc){
       if (doc.exists) {
-        // サブコレクションにデータあり → そのまま使う
         applyRemoteData(doc.data());
         return;
       }
-      // サブコレクションにデータなし → 旧形式（親ドキュメント）からマイグレーション
+      // サブコレクションにデータなし → 旧形式チェック
       return userRef.get().then(function(parentDoc){
         if (parentDoc.exists && parentDoc.data()[FK]) {
-          var oldData = parentDoc.data()[FK];
-          applyRemoteData(oldData);
-          // マイグレーション: サブコレクションに書き込み
-          showStatus('🔄 データ移行中...', '#42a5f5');
-          return subRef.set({
-            main: oldData.main || {},
-            refcheck: oldData.refcheck || {},
-            highlight: oldData.highlight || {},
-            _t: new Date().toISOString(),
-            _migrated: true
-          }).then(function(){
-            // 旧データのFK フィールドを削除して容量解放
-            var deletePayload = {};
-            deletePayload[FK] = firebase.firestore.FieldValue.delete();
-            return userRef.update(deletePayload);
-          }).then(function(){
-            showStatus('✅ 移行完了', '#66bb6a');
-          });
+          applyRemoteData(parentDoc.data()[FK]);
+          upload(); // サブコレクションに移行
         } else {
           showStatus('✅ ローカル使用', '#66bb6a');
           upload();
         }
       });
     }).catch(function(e){
-      showStatus('❌ 読込エラー: ' + (e.message||''), '#ef5350');
+      showStatus('❌ 読込エラー', '#ef5350');
     });
 
-  } catch(ex) {
-    // Firebase関連のエラーは完全に握りつぶす - アプリに影響させない
-  }
+  } catch(ex) {}
 })();
