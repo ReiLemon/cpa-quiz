@@ -1,0 +1,246 @@
+// Firebase Auto-Sync - 完全独立スクリプト
+// アプリ本体のコードには一切干渉しない
+// v2: サブコレクション分割でFirestore 1MBドキュメント制限を回避
+(function(){
+  'use strict';
+  try {
+    // FK はHTMLの data属性から取得
+    var el = document.getElementById('firebase-sync-config');
+    if (!el) return;
+    var FK = el.getAttribute('data-key');
+    if (!FK) return;
+
+    // Firebase SDK チェック
+    if (typeof firebase === 'undefined') return;
+
+    // 初期化（重複防止）
+    if (!firebase.apps.length) {
+      firebase.initializeApp({
+        apiKey: "AIzaSyByImWNSABE69MCpTHbqYZzz6LZRKwplD4",
+        authDomain: "cpa-quiz-6d1f9.firebaseapp.com",
+        projectId: "cpa-quiz-6d1f9",
+        storageBucket: "cpa-quiz-6d1f9.firebasestorage.app",
+        messagingSenderId: "534803312241",
+        appId: "1:534803312241:web:00dde6df4cbbedf1da35d0"
+      });
+    }
+
+    var db = firebase.firestore();
+    var userRef = db.collection('users').doc('u5wnfjuskrmm1bl4z0');
+    // サブコレクション: users/{uid}/subjects/{FK}
+    var subRef = userRef.collection('subjects').doc(FK);
+
+    // 同期インジケーター
+    var dot = document.createElement('div');
+    dot.style.cssText = 'position:fixed;bottom:8px;right:8px;z-index:9999;font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(0,0,0,.6);color:#aaa;pointer-events:none;transition:opacity .3s;opacity:0';
+    document.body.appendChild(dot);
+    var hideTimer;
+    function showStatus(msg, color) {
+      dot.textContent = msg;
+      dot.style.color = color || '#aaa';
+      dot.style.opacity = '1';
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(function(){ dot.style.opacity = '0'; }, 3000);
+    }
+
+    // sessHistoryを直近50件に制限（データ肥大化防止）
+    function trimData(data) {
+      if (data.sessHistory && Array.isArray(data.sessHistory)) {
+        data.sessHistory.sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+        if (data.sessHistory.length > 50) {
+          data.sessHistory = data.sessHistory.slice(0, 50);
+        }
+      }
+      // slowDBも上限100に制限
+      if (data.slowDB && Array.isArray(data.slowDB) && data.slowDB.length > 100) {
+        data.slowDB = data.slowDB.slice(-100);
+      }
+      return data;
+    }
+
+    // ローカルデータのスナップショット取得
+    function getLocalSnapshot() {
+      return JSON.stringify({
+        main: localStorage.getItem(FK) || '{}',
+        ref: localStorage.getItem(FK + '_refcheck') || '{}',
+        hl: localStorage.getItem(FK + '_hl') || '{}'
+      });
+    }
+
+    // Firestoreへアップロード（サブコレクションに保存）
+    var lastSnapshot = getLocalSnapshot();
+    var uploading = false;
+    function upload() {
+      if (uploading) return;
+      var snap = getLocalSnapshot();
+      if (snap === lastSnapshot) return;
+      uploading = true;
+      lastSnapshot = snap;
+      showStatus('⬆ 保存中...', '#ffa726');
+
+      var mainData = trimData(JSON.parse(localStorage.getItem(FK) || '{}'));
+      var payload = {
+        main: mainData,
+        refcheck: JSON.parse(localStorage.getItem(FK + '_refcheck') || '{}'),
+        highlight: JSON.parse(localStorage.getItem(FK + '_hl') || '{}'),
+        _t: new Date().toISOString()
+      };
+
+      subRef.set(payload).then(function(){
+        uploading = false;
+        showStatus('✅ 同期完了', '#66bb6a');
+      }).catch(function(e){
+        uploading = false;
+        showStatus('❌ 保存エラー: ' + (e.message||''), '#ef5350');
+      });
+    }
+
+    // 定期的にlocalStorageの変更を検出してアップロード（3秒ごと）
+    setInterval(function(){
+      try { upload(); } catch(e){}
+    }, 3000);
+
+    // ページ離脱時にもアップロード
+    window.addEventListener('beforeunload', function(){
+      try {
+        var snap = getLocalSnapshot();
+        if (snap !== lastSnapshot) {
+          var mainData = trimData(JSON.parse(localStorage.getItem(FK) || '{}'));
+          var payload = {
+            main: mainData,
+            refcheck: JSON.parse(localStorage.getItem(FK + '_refcheck') || '{}'),
+            highlight: JSON.parse(localStorage.getItem(FK + '_hl') || '{}'),
+            _t: new Date().toISOString()
+          };
+          navigator.sendBeacon && navigator.sendBeacon('about:blank', '');
+          subRef.set(payload);
+        }
+      } catch(e){}
+    });
+
+    // ページロード時にFirestoreからダウンロード＆マージ
+    // まずサブコレクションを試し、なければ旧形式（親ドキュメント）からマイグレーション
+    showStatus('⬇ 読込中...', '#42a5f5');
+
+    function applyRemoteData(r) {
+      // mainデータのマージ
+      if (r.main) {
+        var l = JSON.parse(localStorage.getItem(FK) || '{}');
+        var m = r.main;
+        if (m.db) {
+          if (!l.db) l.db = {};
+          for (var k in m.db) {
+            if (!l.db[k]) l.db[k] = m.db[k];
+            else {
+              l.db[k].o = Math.max(l.db[k].o||0, m.db[k].o||0);
+              l.db[k].x = Math.max(l.db[k].x||0, m.db[k].x||0);
+              l.db[k].ts = Math.max(l.db[k].ts||0, m.db[k].ts||0);
+            }
+          }
+        }
+        ['wrongDB','unknownDB','bookmarks','answeredDB'].forEach(function(f){
+          if (m[f]) {
+            if (!l[f]) l[f] = {};
+            for (var k in m[f]) { if (!l[f][k]) l[f][k] = m[f][k]; }
+          }
+        });
+        if (m.slowDB && Array.isArray(m.slowDB)) {
+          if (!l.slowDB) l.slowDB = [];
+          var ss = {};
+          l.slowDB.forEach(function(i){ ss[i]=1; });
+          m.slowDB.forEach(function(i){ if(!ss[i]) l.slowDB.push(i); });
+        }
+        if (m.slow20DB) {
+          if (!l.slow20DB) l.slow20DB = {};
+          for (var k in m.slow20DB) { if(!l.slow20DB[k]) l.slow20DB[k]=m.slow20DB[k]; }
+        }
+        if (m.srsDB) {
+          if (!l.srsDB) l.srsDB = {};
+          for (var k in m.srsDB) {
+            if (!l.srsDB[k]) l.srsDB[k] = m.srsDB[k];
+            else l.srsDB[k].lv = Math.max(l.srsDB[k].lv||0, m.srsDB[k].lv||0);
+          }
+        }
+        if (m.memoMap) {
+          if (!l.memoMap) l.memoMap = {};
+          for (var k in m.memoMap) {
+            if (!l.memoMap[k]) l.memoMap[k] = m.memoMap[k];
+            else if ((m.memoMap[k]||'').length > (l.memoMap[k]||'').length) l.memoMap[k] = m.memoMap[k];
+          }
+        }
+        if (m.sessHistory && Array.isArray(m.sessHistory)) {
+          if (!l.sessHistory) l.sessHistory = [];
+          var ts = {};
+          l.sessHistory.forEach(function(s){ ts[s.ts]=1; });
+          m.sessHistory.forEach(function(s){ if(!ts[s.ts]) l.sessHistory.push(s); });
+          l.sessHistory.sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+        }
+        localStorage.setItem(FK, JSON.stringify(l));
+      }
+
+      // refcheckマージ
+      if (r.refcheck) {
+        var rc = JSON.parse(localStorage.getItem(FK+'_refcheck') || '{}');
+        for (var k in r.refcheck) { if(!rc[k]) rc[k] = r.refcheck[k]; }
+        localStorage.setItem(FK+'_refcheck', JSON.stringify(rc));
+      }
+
+      // highlightマージ
+      if (r.highlight) {
+        var hl = JSON.parse(localStorage.getItem(FK+'_hl') || '{}');
+        for (var k in r.highlight) { if(!hl[k]) hl[k] = r.highlight[k]; }
+        localStorage.setItem(FK+'_hl', JSON.stringify(hl));
+      }
+
+      // アプリ状態をリロード
+      if (typeof loadStorage === 'function') loadStorage();
+      if (typeof refCheckDB !== 'undefined') {
+        refCheckDB = JSON.parse(localStorage.getItem(FK+'_refcheck') || '{}');
+      }
+      if (typeof updateCountBadge === 'function') updateCountBadge();
+
+      lastSnapshot = getLocalSnapshot();
+      showStatus('✅ 同期完了', '#66bb6a');
+    }
+
+    // まずサブコレクションから読む
+    subRef.get().then(function(doc){
+      if (doc.exists) {
+        // サブコレクションにデータあり → そのまま使う
+        applyRemoteData(doc.data());
+        return;
+      }
+      // サブコレクションにデータなし → 旧形式（親ドキュメント）からマイグレーション
+      return userRef.get().then(function(parentDoc){
+        if (parentDoc.exists && parentDoc.data()[FK]) {
+          var oldData = parentDoc.data()[FK];
+          applyRemoteData(oldData);
+          // マイグレーション: サブコレクションに書き込み
+          showStatus('🔄 データ移行中...', '#42a5f5');
+          return subRef.set({
+            main: oldData.main || {},
+            refcheck: oldData.refcheck || {},
+            highlight: oldData.highlight || {},
+            _t: new Date().toISOString(),
+            _migrated: true
+          }).then(function(){
+            // 旧データのFK フィールドを削除して容量解放
+            var deletePayload = {};
+            deletePayload[FK] = firebase.firestore.FieldValue.delete();
+            return userRef.update(deletePayload);
+          }).then(function(){
+            showStatus('✅ 移行完了', '#66bb6a');
+          });
+        } else {
+          showStatus('✅ ローカル使用', '#66bb6a');
+          upload();
+        }
+      });
+    }).catch(function(e){
+      showStatus('❌ 読込エラー: ' + (e.message||''), '#ef5350');
+    });
+
+  } catch(ex) {
+    // Firebase関連のエラーは完全に握りつぶす - アプリに影響させない
+  }
+})();
