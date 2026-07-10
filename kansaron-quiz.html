@@ -216,7 +216,7 @@ mark.hl.hl-blue{background:#90caf9}
 <div class="wrap">
 
 <!-- ========== QUIZ ========== -->
-<div id="screen-quiz" class="screen active">
+<div id="screen-quiz" class="screen">
   <div class="card" id="filter-panel">
     <div class="filter-row">
       <span class="flbl">重要度</span>
@@ -1628,11 +1628,14 @@ function showTab(name){
     gi('screen-'+s).classList.remove('active');
     gi('tab-'+s).classList.remove('active');
   });
-  gi('screen-'+name).classList.add('active');
+  // 📝 クイズ タブは進捗度学習モード（章リスト）をトップページとして開く
+  var scr = (name==='quiz') ? 'sec' : name;
+  gi('screen-'+scr).classList.add('active');
   gi('tab-'+name).classList.add('active');
   if(name==='an') renderAn();
   if(name==='text') renderTextRef();
-  if(name==='sec') renderSec();
+  if(scr==='sec') renderSec();
+  window.scrollTo(0,0);
 }
 function gi(id){return document.getElementById(id);}
 function show(id){var el=gi(id);if(el)el.style.display='block';}
